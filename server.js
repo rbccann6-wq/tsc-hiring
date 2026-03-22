@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -44,21 +43,21 @@ function getDefaultPositions() {
 let db = loadDB();
 if (!db.positions || !db.positions.length) { db.positions = getDefaultPositions(); saveDB(db); }
 
-// ─── Email Setup ───
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-});
-
+// ─── Email via Resend ───
 async function sendEmail(to, subject, html) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return;
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM || 'hiring@tropicalsmoothiecafe.com';
+  if (!apiKey) { console.log('No RESEND_API_KEY — skipping email'); return; }
   try {
-    await transporter.sendMail({
-      from: `"${process.env.CAFE_NAME || 'Tropical Smoothie Cafe'}" <${process.env.SMTP_USER}>`,
-      to, subject, html,
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to, subject, html }),
     });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Resend error:', err);
+    }
   } catch(e) { console.error('Email error:', e.message); }
 }
 
