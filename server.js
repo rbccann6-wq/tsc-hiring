@@ -78,7 +78,7 @@ async function sendSMS(to, text) {
         'Authorization': apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from, to: normalized, content: text }),
+      body: JSON.stringify({ from, to: [normalized], content: text }),
     });
     const data = await res.json();
     if (!res.ok) {
