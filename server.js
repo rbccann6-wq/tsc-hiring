@@ -627,3 +627,62 @@ app.post('/webhook/twilio-sms', async (req, res) => {
     res.send('<Response><Message>Hi! Text JOBS to start your application for Tropical Smoothie Cafe!</Message></Response>');
   }
 });
+
+// ─────────────────────────────────────────────
+// ElevenLabs post-call webhook
+// Parses APPLICATION_DATA from transcript → saves to dashboard
+// ─────────────────────────────────────────────
+app.post('/webhook/elevenlabs-call', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const body = req.body;
+    // Get transcript text
+    const transcript = body?.data?.transcript || body?.transcript || '';
+    const fullText = Array.isArray(transcript)
+      ? transcript.map(t => t.content || t.message || '').join(' ')
+      : String(transcript);
+
+    // Parse APPLICATION_DATA line
+    const match = fullText.match(/APPLICATION_DATA:\s*(\{.*?\})/);
+    if (!match) { console.log('No APPLICATION_DATA in transcript'); return; }
+
+    const data = JSON.parse(match[1]);
+    data.legally_authorized = 'yes';
+    data.over_18 = 'yes';
+    data.source = 'phone_call';
+
+    const { score, disqualified, disqualifyReason, status } = scoreApplication(data, data.position);
+    const posLabel = { gm: 'General Manager', am: 'Assistant Manager', tm: 'Team Member' }[data.position] || data.position;
+    const id = uuidv4();
+
+    const application = {
+      id,
+      applied_at: new Date().toISOString(),
+      status: disqualified ? 'disqualified' : status,
+      score, disqualified, disqualify_reason: disqualifyReason,
+      hired: false, notes: '', interview_date: null,
+      sms_sent: false, sms_log: [],
+      ...data
+    };
+
+    db = loadDB();
+    db.applications.push(application);
+    saveDB(db);
+    console.log(`Phone application saved: ${data.first_name} ${data.last_name} — ${posLabel} — score ${score}`);
+
+    if (process.env.NOTIFY_EMAIL) {
+      await sendEmail(process.env.NOTIFY_EMAIL,
+        `📞 New Phone Application — ${data.first_name} ${data.last_name} (Score: ${score})`,
+        `<h2>New Phone Application!</h2>
+         <p><b>Via call to (833) 349-4896</b></p>
+         <p><b>Position:</b> ${posLabel}</p>
+         <p><b>Name:</b> ${data.first_name} ${data.last_name}</p>
+         <p><b>Phone:</b> ${data.phone}</p>
+         <p><b>Score:</b> ${score}/100 — ${status.toUpperCase()}</p>
+         <hr><p><a href="${process.env.APP_URL||''}/admin">View in Dashboard →</a></p>`
+      );
+    }
+  } catch(e) {
+    console.error('ElevenLabs webhook error:', e.message);
+  }
+});
