@@ -370,6 +370,94 @@ function parsePosition(text) {
   return null;
 }
 
+// Returns reply text without sending (for TwiML use)
+async function handleInboundSMSText(from, body) {
+  let captured = null;
+  const origSend = sendSMS;
+  // Monkey-patch sendSMS temporarily
+  const fakeSend = async (to, text) => { captured = text; return { ok: true }; };
+  // Inline the bot logic but use fakeSend
+  const text = (body || '').trim();
+  let conv = getConversation(from);
+  const isStart = !conv || ['hi','hello','hey','job','jobs','hiring','apply','start','yes'].includes(text.toLowerCase());
+
+  if (!conv || isStart) {
+    const newConv = { step: BOT_STEPS.GET_NAME, phone: from, data: {}, started_at: new Date().toISOString() };
+    saveConversation(from, newConv);
+    return "Hi! 🌴 Thanks for your interest in joining Tropical Smoothie Cafe! I'm going to ask you a few quick questions.\n\nFirst — what's your first and last name?";
+  }
+
+  const step = conv.step;
+  if (step === BOT_STEPS.GET_NAME) {
+    const parts = text.split(' ');
+    conv.data.first_name = parts[0];
+    conv.data.last_name = parts.slice(1).join(' ') || '';
+    conv.step = BOT_STEPS.GET_POSITION;
+    saveConversation(from, conv);
+    return `Nice to meet you, ${conv.data.first_name}! 👋\n\nWhich position?\n1 General Manager\n2 Assistant Manager\n3 Team Member`;
+  }
+  if (step === BOT_STEPS.GET_POSITION) {
+    const pos = parsePosition(text);
+    if (!pos) return "Reply 1 for General Manager, 2 for Assistant Manager, or 3 for Team Member.";
+    conv.data.position = pos;
+    conv.step = BOT_STEPS.GET_AVAILABILITY;
+    saveConversation(from, conv);
+    return "Great! What days can you work?\n• Weekdays\n• Weekends\n• Both\n• Mornings only\n• Evenings only";
+  }
+  if (step === BOT_STEPS.GET_AVAILABILITY) {
+    const t = text.toLowerCase();
+    conv.data.can_work_weekends = (t.includes('weekend') || t.includes('both')) ? 'yes' : 'no';
+    conv.data.can_work_mornings = (t.includes('morning') || t.includes('both') || t.includes('weekday')) ? 'yes' : 'no';
+    conv.data.can_work_evenings = (t.includes('evening') || t.includes('both') || t.includes('weekday')) ? 'yes' : 'no';
+    conv.step = BOT_STEPS.GET_HOURS;
+    saveConversation(from, conv);
+    return "Hours per week?\n1 Under 20 (part-time)\n2 20-30 hrs\n3 30-40 hrs\n4 40+ (full-time)";
+  }
+  if (step === BOT_STEPS.GET_HOURS) {
+    const t = text.toLowerCase();
+    let hours = 'under_20';
+    if (t==='2'||t.includes('20-30')||t.includes('20')) hours='20-30';
+    else if (t==='3'||t.includes('30-40')||t.includes('30')) hours='30-40';
+    else if (t==='4'||t.includes('40')||t.includes('full')) hours='40+';
+    conv.data.hours_available = hours;
+    conv.step = BOT_STEPS.GET_EXPERIENCE;
+    saveConversation(from, conv);
+    return "Any food service experience?\n1 Yes\n2 No - first food service job";
+  }
+  if (step === BOT_STEPS.GET_EXPERIENCE) {
+    const t = text.toLowerCase();
+    conv.data.food_service_experience = (t==='1'||t.includes('yes')) ? 'yes' : 'no';
+    conv.step = BOT_STEPS.GET_START;
+    saveConversation(from, conv);
+    return "When can you start?\n1 Immediately\n2 Within 1 week\n3 2 weeks notice\n4 About 1 month";
+  }
+  if (step === BOT_STEPS.GET_START) {
+    const t = text.toLowerCase();
+    let start = 'immediately';
+    if (t==='2'||t.includes('1 week')) start='1_week';
+    else if (t==='3'||t.includes('2 week')) start='2_weeks';
+    else if (t==='4'||t.includes('month')) start='1_month';
+    conv.data.available_start = start;
+    conv.data.phone = from;
+    conv.data.legally_authorized = 'yes';
+    conv.data.over_18 = 'yes';
+    const { score, disqualified, disqualifyReason, status } = scoreApplication(conv.data, conv.data.position);
+    const posLabel = {gm:'General Manager',am:'Assistant Manager',tm:'Team Member'}[conv.data.position]||conv.data.position;
+    const id = uuidv4();
+    const application = { id, applied_at: new Date().toISOString(), status: disqualified?'disqualified':status, score, disqualified, disqualify_reason: disqualifyReason, hired:false, notes:'', interview_date:null, sms_sent:false, sms_log:[], source:'sms_inbound', ...conv.data };
+    db = loadDB(); db.applications.push(application); saveDB(db);
+    clearConversation(from);
+    if (process.env.NOTIFY_EMAIL) {
+      await sendEmail(process.env.NOTIFY_EMAIL, `📱 New SMS Application — ${conv.data.first_name} ${conv.data.last_name} (Score: ${score})`,
+        `<h2>New SMS Application!</h2><p><b>Position:</b> ${posLabel}</p><p><b>Name:</b> ${conv.data.first_name} ${conv.data.last_name}</p><p><b>Phone:</b> ${from}</p><p><b>Score:</b> ${score}/100 — ${status.toUpperCase()}</p><hr><p><a href="${process.env.APP_URL||''}/admin">View in Dashboard</a></p>`);
+    }
+    if (disqualified) return `Thanks for your interest, ${conv.data.first_name}! Unfortunately we can't move forward at this time. 🌴`;
+    if (status === 'hot') return `🎉 Great news, ${conv.data.first_name}! We'd love to schedule an interview. What days and times work best for you this week?`;
+    return `Thanks ${conv.data.first_name}! We received your application for ${posLabel}. 🌴 We'll text you within 2-3 days if we'd like to interview!`;
+  }
+  return `Text JOBS to start a new application, or visit ${process.env.APP_URL||'our website'} to apply online.`;
+}
+
 async function handleInboundSMS(from, body) {
   const text = (body || '').trim();
   let conv = getConversation(from);
@@ -517,18 +605,25 @@ app.post('/webhook/openphone', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// TWILIO inbound SMS webhook (same bot logic)
+// TWILIO inbound SMS — replies via TwiML directly
 // ─────────────────────────────────────────────
-app.post('/webhook/twilio-sms', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/webhook/twilio-sms', async (req, res) => {
   const from = req.body.From;
   const body = req.body.Body || '';
   console.log(`Twilio inbound SMS from ${from}: ${body}`);
-  // Run through same bot — response goes via sendSMS (OpenPhone API)
-  // For Twilio, reply via TwiML instead
-  try {
-    await handleInboundSMS(from, body);
-  } catch(e) { console.error('Twilio SMS handler error:', e.message); }
-  // Return empty TwiML (we already sent via OpenPhone/Twilio REST)
+
   res.set('Content-Type', 'text/xml');
-  res.send('<Response></Response>');
+
+  try {
+    const replyText = await handleInboundSMSText(from, body);
+    if (replyText) {
+      const escaped = replyText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      res.send(`<Response><Message>${escaped}</Message></Response>`);
+    } else {
+      res.send('<Response></Response>');
+    }
+  } catch(e) {
+    console.error('Twilio SMS error:', e.message);
+    res.send('<Response><Message>Hi! Text JOBS to start your application for Tropical Smoothie Cafe!</Message></Response>');
+  }
 });
