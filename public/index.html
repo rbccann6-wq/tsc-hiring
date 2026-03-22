@@ -565,23 +565,29 @@ function showStep(n) {
 
 function validateStep() {
   const step = document.getElementById('step-' + currentStep);
-  const required = step.querySelectorAll('[required]');
   let valid = true;
-  required.forEach(el => {
+
+  // Check required text/email/tel/select inputs
+  step.querySelectorAll('input[required], select[required]').forEach(el => {
+    if (el.type === 'radio') return; // handle radios separately below
     const field = el.closest('.field');
     if (!el.value.trim()) {
-      if (field) { field.classList.add('error'); const em = field.querySelector('.error-msg'); if(em) em.style.display='block'; }
+      if (field) field.classList.add('error');
       valid = false;
     } else {
-      if (field) { field.classList.remove('error'); const em = field.querySelector('.error-msg'); if(em) em.style.display='none'; }
+      if (field) field.classList.remove('error');
     }
   });
-  // Check radio groups
-  const radioGroups = step.querySelectorAll('.radio-group');
-  radioGroups.forEach(group => {
-    const checked = group.querySelector('input:checked');
-    if (!checked && group.querySelector('input[required]')) valid = false;
+
+  // Check required radio groups — only flag if the group has a required input AND nothing is checked
+  const seenNames = new Set();
+  step.querySelectorAll('input[type="radio"][required]').forEach(radio => {
+    if (seenNames.has(radio.name)) return;
+    seenNames.add(radio.name);
+    const anyChecked = step.querySelector(`input[name="${radio.name}"]:checked`);
+    if (!anyChecked) valid = false;
   });
+
   return valid;
 }
 
