@@ -214,7 +214,7 @@ function posClass(p) { return 'pos-'+p; }
 function renderTable(apps, container) {
   if (!apps.length) { container.innerHTML = '<div class="empty">No applications found</div>'; return; }
   container.innerHTML = `<table><thead><tr>
-    <th>Name</th><th>Position</th><th>Score</th><th>Status</th><th>Availability</th><th>Applied</th>
+    <th>Name</th><th>Position</th><th>Score</th><th>Status</th><th>Availability</th><th>SMS</th><th>Applied</th>
   </tr></thead><tbody>
   ${apps.map(a => `<tr onclick="viewApp('${a.id}')">
     <td><strong>${a.first_name||''} ${a.last_name||''}</strong><br><small style="color:#999">${a.phone||''}</small></td>
@@ -227,7 +227,7 @@ function renderTable(apps, container) {
     </td>
     <td><span class="status-badge status-${a.status}">${a.status}</span></td>
     <td><small>${a.hours_available||'?'} hrs/wk${a.can_work_weekends==='yes'?' • weekends':''}</small></td>
-    <td><small>${new Date(a.applied_at).toLocaleDateString()}</small></td>
+    <td>${a.sms_sent ? '✅' : '—'}</td><td><small>${new Date(a.applied_at).toLocaleDateString()}</small></td>
   </tr>`).join('')}
   </tbody></table>`;
 }
@@ -343,6 +343,13 @@ async function viewApp(id) {
 
     <div class="section">
       <h3>Actions</h3>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn-save" style="background:#7c3aed" onclick="sendInterviewSMS('${app.id}')">📱 Send Interview Request SMS</button>
+          <button class="btn-save" style="background:#555" onclick="sendCustomSMS('${app.id}')">💬 Send Custom SMS</button>
+          ${app.sms_log && app.sms_log.length ? `<span style="font-size:.8rem;color:#888">Last SMS: ${app.sms_log[app.sms_log.length-1].type} — ${app.sms_log[app.sms_log.length-1].ok ? '✅ delivered' : '❌ failed: '+app.sms_log[app.sms_log.length-1].reason}</span>` : '<span style="font-size:.8rem;color:#aaa">No SMS sent yet</span>'}
+        </div>
+      </div>
       <div class="action-bar" style="margin-bottom:12px">
         <select id="status-select">
           <option value="new" ${app.status==='new'?'selected':''}>New</option>
@@ -412,6 +419,33 @@ function filterPos(pos) {
   if (document.getElementById('filter-pos')) document.getElementById('filter-pos').value = pos;
   if (document.getElementById('filter-status')) document.getElementById('filter-status').value = '';
   loadApps();
+}
+
+async function sendInterviewSMS(id) {
+  if (!confirm('Send interview request SMS to this applicant?')) return;
+  const r = await fetch('/api/admin/applications/'+id+'/sms', {
+    method: 'POST',
+    headers: { 'x-admin-token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'interview_request' })
+  });
+  const d = await r.json();
+  if (d.success) alert('✅ SMS sent!');
+  else alert('❌ SMS failed: ' + (d.reason || d.error) + '\n\nNote: OpenPhone may still be pending A2P messaging approval.');
+  viewApp(id);
+}
+
+async function sendCustomSMS(id) {
+  const msg = prompt('Enter your SMS message:');
+  if (!msg) return;
+  const r = await fetch('/api/admin/applications/'+id+'/sms', {
+    method: 'POST',
+    headers: { 'x-admin-token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'custom', message: msg })
+  });
+  const d = await r.json();
+  if (d.success) alert('✅ SMS sent!');
+  else alert('❌ SMS failed: ' + (d.reason || d.error));
+  viewApp(id);
 }
 
 // Auto-login if token exists

@@ -46,7 +46,7 @@ if (!db.positions || !db.positions.length) { db.positions = getDefaultPositions(
 // ─── Email via Resend ───
 async function sendEmail(to, subject, html) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM || 'hiring@tropicalsmoothiecafe.com';
+  const from = process.env.RESEND_FROM || 'onboarding@resend.dev';
   if (!apiKey) { console.log('No RESEND_API_KEY — skipping email'); return; }
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -59,6 +59,57 @@ async function sendEmail(to, subject, html) {
       console.error('Resend error:', err);
     }
   } catch(e) { console.error('Email error:', e.message); }
+}
+
+// ─── SMS via OpenPhone ───
+async function sendSMS(to, text) {
+  const apiKey = process.env.OPENPHONE_API_KEY;
+  const from = process.env.OPENPHONE_NUMBER; // e.g. +13344891215
+  if (!apiKey || !from) { console.log('OpenPhone not configured — skipping SMS'); return { ok: false, reason: 'not_configured' }; }
+
+  // Normalize phone number to E.164
+  const normalized = normalizePhone(to);
+  if (!normalized) { console.log('Invalid phone number:', to); return { ok: false, reason: 'invalid_phone' }; }
+
+  try {
+    const res = await fetch('https://api.openphone.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from, to: normalized, content: text }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('OpenPhone SMS error:', JSON.stringify(data));
+      return { ok: false, reason: data.message || 'api_error', data };
+    }
+    console.log(`SMS sent to ${normalized}: ${data.data?.id}`);
+    return { ok: true, id: data.data?.id };
+  } catch(e) {
+    console.error('SMS error:', e.message);
+    return { ok: false, reason: e.message };
+  }
+}
+
+function normalizePhone(phone) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits[0] === '1') return '+' + digits;
+  if (digits.length > 10) return '+' + digits;
+  return null;
+}
+
+// SMS templates
+function interviewRequestSMS(firstName, position) {
+  const posLabel = { gm: 'General Manager', am: 'Assistant Manager', tm: 'Team Member' }[position] || position;
+  return `Hi ${firstName}! 🌴 Thanks for applying to Tropical Smoothie Cafe for the ${posLabel} position! We reviewed your application and would love to set up an interview. What days and times work best for you this week? Reply here and we'll get something scheduled!`;
+}
+
+function applicationReceivedSMS(firstName) {
+  return `Hi ${firstName}! Thanks for applying to Tropical Smoothie Cafe 🌴 We received your application and will review it within 2-3 business days. We'll text you here if we'd like to schedule an interview!`;
 }
 
 // ─── Scoring ───
@@ -98,14 +149,14 @@ function scoreApplication(data, position) {
     if (data.management_experience === 'yes') score += 20;
     if (data.food_service_experience === 'yes') score += 15;
   } else {
-    score += 20; // Base for showing up
+    score += 20;
     if (data.food_service_experience === 'yes') score += 15;
     if (data.available_start === 'immediately') score += 5;
   }
 
   // Answer quality
   if (data.why_tsc && data.why_tsc.length > 60) score += 5;
-  if ((data.conflict_example || data.customer_service_example || '') .length > 80) score += 5;
+  if ((data.conflict_example || data.customer_service_example || '').length > 80) score += 5;
   if (data.scenario_answer && data.scenario_answer.length > 60) score += 5;
 
   const finalScore = Math.min(score, 100);
@@ -131,9 +182,8 @@ app.post('/api/apply', async (req, res) => {
       applied_at: new Date().toISOString(),
       status: disqualified ? 'disqualified' : status,
       score, disqualified, disqualify_reason: disqualifyReason,
-      hired: false,
-      notes: '',
-      interview_date: null,
+      hired: false, notes: '', interview_date: null,
+      sms_sent: false, sms_log: [],
       ...data
     };
 
@@ -141,7 +191,30 @@ app.post('/api/apply', async (req, res) => {
     db.applications.push(application);
     saveDB(db);
 
-    // Notify owner
+    // ── SMS Logic ──
+    if (!disqualified && data.phone) {
+      if (status === 'hot') {
+        // Hot: immediately ask for interview availability
+        const smsResult = await sendSMS(data.phone, interviewRequestSMS(data.first_name, data.position));
+        const idx = db.applications.findIndex(a => a.id === id);
+        if (idx !== -1) {
+          db.applications[idx].sms_sent = smsResult.ok;
+          db.applications[idx].sms_log = [{ type: 'interview_request', sent_at: new Date().toISOString(), ok: smsResult.ok, reason: smsResult.reason }];
+          saveDB(db);
+        }
+      } else if (status === 'review' || status === 'low') {
+        // Review/low: send confirmation text only
+        const smsResult = await sendSMS(data.phone, applicationReceivedSMS(data.first_name));
+        const idx = db.applications.findIndex(a => a.id === id);
+        if (idx !== -1) {
+          db.applications[idx].sms_sent = smsResult.ok;
+          db.applications[idx].sms_log = [{ type: 'confirmation', sent_at: new Date().toISOString(), ok: smsResult.ok, reason: smsResult.reason }];
+          saveDB(db);
+        }
+      }
+    }
+
+    // ── Email notify owner ──
     if (process.env.NOTIFY_EMAIL) {
       await sendEmail(process.env.NOTIFY_EMAIL,
         `🆕 New ${posLabel} Application — ${data.first_name} ${data.last_name} (Score: ${score})`,
@@ -151,13 +224,13 @@ app.post('/api/apply', async (req, res) => {
          <p><b>Phone:</b> ${data.phone}</p>
          <p><b>Email:</b> ${data.email}</p>
          <p><b>Score:</b> ${score}/100</p>
-         <p><b>Status:</b> ${disqualified ? '❌ DISQUALIFIED — '+disqualifyReason : score >= 70 ? '🔥 HOT CANDIDATE' : score >= 45 ? '👀 WORTH REVIEWING' : '📋 LOW PRIORITY'}</p>
+         <p><b>Status:</b> ${disqualified ? '❌ DISQUALIFIED — '+disqualifyReason : score >= 70 ? '🔥 HOT — interview request SMS sent' : score >= 45 ? '👀 WORTH REVIEWING — confirmation SMS sent' : '📋 LOW PRIORITY'}</p>
          <p><b>Hours/wk:</b> ${data.hours_available} | Weekends: ${data.can_work_weekends}</p>
          <hr><p><a href="${process.env.APP_URL||'http://localhost:3000'}/admin">View in Dashboard →</a></p>`
       );
     }
 
-    // Confirm to applicant
+    // ── Email confirm applicant ──
     if (data.email) {
       await sendEmail(data.email,
         `Thanks for applying to Tropical Smoothie Cafe — ${data.first_name}!`,
@@ -173,6 +246,31 @@ app.post('/api/apply', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Admin: Manual SMS trigger ───
+app.post('/api/admin/applications/:id/sms', adminAuth, async (req, res) => {
+  db = loadDB();
+  const idx = db.applications.findIndex(a => a.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found' });
+  const application = db.applications[idx];
+  const { type = 'interview_request' } = req.body;
+
+  let text;
+  if (type === 'interview_request') {
+    text = interviewRequestSMS(application.first_name, application.position);
+  } else if (type === 'custom' && req.body.message) {
+    text = req.body.message;
+  } else {
+    return res.status(400).json({ error: 'Invalid type' });
+  }
+
+  const result = await sendSMS(application.phone, text);
+  if (!db.applications[idx].sms_log) db.applications[idx].sms_log = [];
+  db.applications[idx].sms_log.push({ type, sent_at: new Date().toISOString(), ok: result.ok, reason: result.reason, text });
+  db.applications[idx].sms_sent = true;
+  saveDB(db);
+  res.json({ success: result.ok, ...result });
 });
 
 // ─── Admin ───
@@ -193,9 +291,9 @@ app.get('/api/admin/applications', adminAuth, (req, res) => {
 
 app.get('/api/admin/applications/:id', adminAuth, (req, res) => {
   db = loadDB();
-  const app = db.applications.find(a => a.id === req.params.id);
-  if (!app) return res.status(404).json({ error: 'Not found' });
-  res.json(app);
+  const found = db.applications.find(a => a.id === req.params.id);
+  if (!found) return res.status(404).json({ error: 'Not found' });
+  res.json(found);
 });
 
 app.patch('/api/admin/applications/:id', adminAuth, (req, res) => {
