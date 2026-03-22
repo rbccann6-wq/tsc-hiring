@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Join Our Team | Tropical Smoothie Cafe</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#fff9f0;color:#1a1a1a;min-height:100vh}
+:root{--orange:#FF6B2C;--green:#2D8A4E;--yellow:#FFD700;--light-orange:#FFF0E8;--dark:#1a1a1a}
+
+/* Header */
+.header{background:linear-gradient(135deg,var(--orange) 0%,#ff8c42 50%,var(--green) 100%);padding:40px 20px;text-align:center;color:white}
+.header-logo{font-size:14px;letter-spacing:3px;text-transform:uppercase;opacity:.8;margin-bottom:8px}
+.header h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:900;margin-bottom:10px}
+.header p{font-size:1.1rem;opacity:.9;max-width:600px;margin:0 auto}
+
+/* Position Cards */
+.positions{max-width:1000px;margin:40px auto;padding:0 20px}
+.positions h2{text-align:center;font-size:1.8rem;font-weight:800;margin-bottom:8px;color:var(--dark)}
+.positions .subtitle{text-align:center;color:#666;margin-bottom:32px}
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.pos-card{background:white;border-radius:16px;padding:28px;box-shadow:0 4px 20px rgba(0,0,0,.08);cursor:pointer;border:3px solid transparent;transition:all .2s}
+.pos-card:hover{border-color:var(--orange);transform:translateY(-4px);box-shadow:0 8px 30px rgba(255,107,44,.15)}
+.pos-card.selected{border-color:var(--orange);background:var(--light-orange)}
+.pos-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:12px}
+.badge-mgmt{background:#e8f5e9;color:var(--green)}
+.badge-hourly{background:#fff3e0;color:var(--orange)}
+.pos-card h3{font-size:1.3rem;font-weight:800;margin-bottom:6px}
+.pos-pay{color:var(--orange);font-weight:700;font-size:1rem;margin-bottom:10px}
+.pos-desc{color:#555;font-size:.9rem;line-height:1.5;margin-bottom:16px}
+.pos-req{font-size:.8rem;color:#888;font-style:italic}
+.apply-btn{width:100%;padding:12px;background:var(--orange);color:white;border:none;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
+.apply-btn:hover{background:#e5541a}
+
+/* Application Form */
+.form-container{max-width:780px;margin:0 auto;padding:20px}
+.form-header{text-align:center;margin-bottom:36px}
+.form-header h2{font-size:2rem;font-weight:800;color:var(--dark)}
+.form-header .pos-label{display:inline-block;padding:6px 18px;background:var(--light-orange);color:var(--orange);border-radius:20px;font-weight:700;margin-bottom:12px}
+.progress-bar{background:#e0e0e0;height:8px;border-radius:4px;margin-bottom:8px}
+.progress-fill{background:linear-gradient(90deg,var(--orange),var(--green));height:100%;border-radius:4px;transition:width .4s}
+.progress-label{text-align:right;font-size:.8rem;color:#888;margin-bottom:24px}
+
+/* Form Steps */
+.step{display:none}
+.step.active{display:block}
+.step-title{font-size:1.3rem;font-weight:800;margin-bottom:6px;color:var(--dark)}
+.step-desc{color:#666;font-size:.9rem;margin-bottom:24px}
+
+/* Form Elements */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:600px){.form-row,.form-row.triple{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.85rem;font-weight:700;color:#333}
+.field label .req{color:var(--orange)}
+.field input,.field select,.field textarea{
+  padding:12px 14px;border:2px solid #e0e0e0;border-radius:10px;
+  font-family:inherit;font-size:.95rem;transition:border .2s;background:white
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+.field textarea{resize:vertical;min-height:100px;line-height:1.5}
+.field .hint{font-size:.75rem;color:#888;font-style:italic}
+
+/* Radio/Checkbox Groups */
+.radio-group,.check-group{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.radio-option,.check-option{
+  display:flex;align-items:center;gap:8px;padding:10px 16px;
+  border:2px solid #e0e0e0;border-radius:10px;cursor:pointer;
+  font-size:.9rem;font-weight:600;transition:all .2s;background:white
+}
+.radio-option:hover,.check-option:hover{border-color:var(--orange);background:var(--light-orange)}
+.radio-option input,.check-option input{accent-color:var(--orange)}
+.radio-option.selected,.check-option.selected{border-color:var(--orange);background:var(--light-orange)}
+
+/* Availability Grid */
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.avail-item{padding:12px;border:2px solid #e0e0e0;border-radius:10px;cursor:pointer;text-align:center;font-size:.85rem;font-weight:700;transition:all .2s}
+.avail-item:hover{border-color:var(--orange)}
+.avail-item.selected{border-color:var(--orange);background:var(--light-orange);color:var(--orange)}
+
+/* Scenario Box */
+.scenario-box{background:linear-gradient(135deg,#fff9f0,#fff0e8);border:2px solid var(--orange);border-radius:12px;padding:20px;margin-bottom:16px}
+.scenario-box .scenario-emoji{font-size:2rem;margin-bottom:8px}
+.scenario-box h4{font-weight:800;margin-bottom:8px;color:var(--orange)}
+.scenario-box p{color:#555;font-size:.9rem;line-height:1.5}
+
+/* Score Preview */
+.score-preview{background:linear-gradient(135deg,#e8f5e9,#f0fff4);border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:20px;text-align:center}
+.score-preview p{color:var(--green);font-weight:700}
+
+/* Navigation */
+.form-nav{display:flex;justify-content:space-between;align-items:center;margin-top:32px;gap:12px}
+.btn-back{padding:12px 24px;background:white;border:2px solid #e0e0e0;border-radius:10px;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;color:#666;transition:all .2s}
+.btn-back:hover{border-color:#999;color:#333}
+.btn-next,.btn-submit{
+  flex:1;padding:14px 24px;background:var(--orange);color:white;
+  border:none;border-radius:10px;font-family:inherit;font-size:1rem;
+  font-weight:800;cursor:pointer;transition:background .2s
+}
+.btn-next:hover,.btn-submit:hover{background:#e5541a}
+.btn-submit{background:var(--green)}
+.btn-submit:hover{background:#1e6e38}
+
+/* Success Screen */
+.success{display:none;text-align:center;padding:60px 20px}
+.success.show{display:block}
+.success-icon{font-size:5rem;margin-bottom:20px}
+.success h2{font-size:2rem;font-weight:800;margin-bottom:12px;color:var(--green)}
+.success p{color:#555;font-size:1.1rem;max-width:500px;margin:0 auto 24px}
+.success .score-badge{display:inline-block;padding:10px 24px;border-radius:20px;font-weight:800;font-size:1.1rem}
+
+/* Error */
+.error-msg{color:#d32f2f;font-size:.8rem;margin-top:4px;display:none}
+.field.error input,.field.error select,.field.error textarea{border-color:#d32f2f}
+.field.error .error-msg{display:block}
+
+#app{max-width:1200px;margin:0 auto}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">🌴 Tropical Smoothie Cafe</div>
+    <h1>Join Our Team!</h1>
+    <p>We're hiring passionate, energetic people who love great food, great vibes, and making guests happy.</p>
+  </div>
+
+  <!-- Position Selection -->
+  <div id="position-select" class="positions">
+    <h2>Choose Your Position</h2>
+    <p class="subtitle">Select the role you're interested in applying for</p>
+    <div class="pos-grid" id="pos-grid"></div>
+  </div>
+
+  <!-- Application Form -->
+  <div id="application-form" class="form-container hidden">
+    <div class="form-header">
+      <div class="pos-label" id="form-pos-label"></div>
+      <h2>Your Application</h2>
+      <p style="color:#666;margin-top:8px">Takes about 5-8 minutes. Answer honestly — we want the right fit!</p>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+    <div class="progress-label" id="progress-label">Step 1 of 6</div>
+
+    <form id="app-form">
+      <input type="hidden" id="position-input" name="position"/>
+
+      <!-- STEP 1: Personal Info -->
+      <div class="step active" id="step-1">
+        <div class="step-title">👋 Let's Start with the Basics</div>
+        <div class="step-desc">Tell us a little about yourself.</div>
+        <div class="form-row">
+          <div class="field" id="field-first_name">
+            <label>First Name <span class="req">*</span></label>
+            <input type="text" name="first_name" placeholder="First name" required/>
+          </div>
+          <div class="field" id="field-last_name">
+            <label>Last Name <span class="req">*</span></label>
+            <input type="text" name="last_name" placeholder="Last name" required/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field" id="field-phone">
+            <label>Phone Number <span class="req">*</span></label>
+            <input type="tel" name="phone" placeholder="(555) 555-5555" required/>
+          </div>
+          <div class="field" id="field-email">
+            <label>Email Address <span class="req">*</span></label>
+            <input type="email" name="email" placeholder="your@email.com" required/>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="field">
+            <label>City / Town you live in</label>
+            <input type="text" name="city" placeholder="e.g. Enterprise, AL"/>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="field">
+            <label>When can you start? <span class="req">*</span></label>
+            <select name="available_start" required>
+              <option value="">Select...</option>
+              <option value="immediately">Immediately</option>
+              <option value="1_week">Within 1 week</option>
+              <option value="2_weeks">2 weeks notice</option>
+              <option value="1_month">About 1 month</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Authorization & Availability -->
+      <div class="step" id="step-2">
+        <div class="step-title">📅 Availability & Authorization</div>
+        <div class="step-desc">Be honest about your availability — we work around real schedules!</div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Are you legally authorized to work in the United States? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="legally_authorized" value="yes" required/> Yes</label>
+            <label class="radio-option"><input type="radio" name="legally_authorized" value="no"/> No</label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Are you 18 years of age or older? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="over_18" value="yes" required/> Yes, I am 18+</label>
+            <label class="radio-option"><input type="radio" name="over_18" value="no"/> No, I am under 18</label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>How many hours per week can you work? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="hours_available" value="under_20" required/> Under 20 hrs (part-time)</label>
+            <label class="radio-option"><input type="radio" name="hours_available" value="20-30"/> 20-30 hrs</label>
+            <label class="radio-option"><input type="radio" name="hours_available" value="30-40"/> 30-40 hrs</label>
+            <label class="radio-option"><input type="radio" name="hours_available" value="40+"/> 40+ hrs (full-time)</label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:8px"><label>Which shifts can you work? (select all that apply) <span class="req">*</span></label></div>
+        <div class="avail-grid" style="margin-bottom:20px">
+          <div class="avail-item" data-field="can_work_mornings" data-value="yes">🌅 Morning shifts (6am-2pm)</div>
+          <div class="avail-item" data-field="can_work_evenings" data-value="yes">🌆 Evening shifts (2pm-close)</div>
+          <div class="avail-item" data-field="can_work_weekends" data-value="yes">📅 Weekends</div>
+          <div class="avail-item" data-field="can_work_holidays" data-value="yes">🎉 Holidays</div>
+        </div>
+        <input type="hidden" name="can_work_mornings" value="no"/>
+        <input type="hidden" name="can_work_evenings" value="no"/>
+        <input type="hidden" name="can_work_weekends" value="no"/>
+        <input type="hidden" name="can_work_holidays" value="no"/>
+      </div>
+
+      <!-- STEP 3: Experience -->
+      <div class="step" id="step-3">
+        <div class="step-title">💼 Your Experience</div>
+        <div class="step-desc">Tell us about your background. No experience? No problem for Team Member roles!</div>
+
+        <div class="form-row single" style="margin-bottom:20px">
+          <div class="field">
+            <label>How many years of food service / restaurant experience do you have? <span class="req">*</span></label>
+            <select name="years_experience" required>
+              <option value="">Select...</option>
+              <option value="none">None — this would be my first food service job</option>
+              <option value="under_1">Less than 1 year</option>
+              <option value="1-3">1-3 years</option>
+              <option value="3-5">3-5 years</option>
+              <option value="5+">5+ years</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Do you have food service or restaurant experience specifically? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="food_service_experience" value="yes" required/> Yes</label>
+            <label class="radio-option"><input type="radio" name="food_service_experience" value="no"/> No</label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Do you have experience in a leadership or supervisory role?</label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="management_experience" value="yes"/> Yes</label>
+            <label class="radio-option"><input type="radio" name="management_experience" value="no"/> No</label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Current or most recent employer</label>
+            <input type="text" name="current_employer" placeholder="Company name (or 'Not currently employed')"/>
+          </div>
+          <div class="field">
+            <label>Why are you leaving / looking for a new job?</label>
+            <select name="reason_leaving">
+              <option value="">Select...</option>
+              <option value="more_hours">Need more hours</option>
+              <option value="better_pay">Looking for better pay</option>
+              <option value="career_growth">Career growth opportunity</option>
+              <option value="relocation">Relocation</option>
+              <option value="not_employed">Not currently employed</option>
+              <option value="first_job">This is my first job</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Management-specific fields (shown conditionally) -->
+        <div id="mgmt-fields" class="hidden">
+          <div class="form-row" style="margin-top:16px">
+            <div class="field">
+              <label>How many people have you managed at one time?</label>
+              <select name="team_size_managed">
+                <option value="">Select...</option>
+                <option value="1-4">1-4 people</option>
+                <option value="5-9">5-9 people</option>
+                <option value="10-19">10-19 people</option>
+                <option value="20+">20+ people</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Do you have experience hiring and onboarding employees?</label>
+              <div class="radio-group" style="margin-top:8px">
+                <label class="radio-option"><input type="radio" name="hiring_experience" value="yes"/> Yes</label>
+                <label class="radio-option"><input type="radio" name="hiring_experience" value="no"/> No</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Do you have P&L / budget management experience?</label>
+              <div class="radio-group" style="margin-top:8px">
+                <label class="radio-option"><input type="radio" name="p_and_l_experience" value="yes"/> Yes</label>
+                <label class="radio-option"><input type="radio" name="p_and_l_experience" value="no"/> No</label>
+              </div>
+            </div>
+            <div class="field">
+              <label>Have you managed inventory or food cost?</label>
+              <div class="radio-group" style="margin-top:8px">
+                <label class="radio-option"><input type="radio" name="inventory_experience" value="yes"/> Yes</label>
+                <label class="radio-option"><input type="radio" name="inventory_experience" value="no"/> No</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Behavioral Questions -->
+      <div class="step" id="step-4">
+        <div class="step-title">💬 Tell Us About Yourself</div>
+        <div class="step-desc">These questions help us understand how you think and work. Be specific — use real examples!</div>
+
+        <!-- Management questions -->
+        <div id="mgmt-behavioral" class="hidden">
+          <div class="field" style="margin-bottom:20px">
+            <label>Tell us about a time you had a conflict with a team member or employee. What happened and how did you handle it? <span class="req">*</span></label>
+            <textarea name="conflict_example" placeholder="Describe the situation, what you did, and the outcome..."></textarea>
+            <div class="hint">Be specific — what did you actually say and do?</div>
+          </div>
+          <div class="field" style="margin-bottom:20px">
+            <label>Describe a time you improved sales or performance at a previous job. What did you do and what were the results?</label>
+            <textarea name="sales_improvement_example" placeholder="What did you change? What were the before/after results?"></textarea>
+          </div>
+        </div>
+
+        <!-- Team Member questions -->
+        <div id="tm-behavioral">
+          <div class="field" style="margin-bottom:20px">
+            <label>Tell us about a time you gave great customer service. What happened? <span class="req">*</span></label>
+            <textarea name="customer_service_example" placeholder="Describe the situation and what made it great..."></textarea>
+          </div>
+          <div class="field" style="margin-bottom:20px">
+            <label>How do you handle a really busy rush when there are long lines and orders backed up?</label>
+            <textarea name="handle_rush_example" placeholder="Walk us through how you stay calm and productive under pressure..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: Scenario Question -->
+      <div class="step" id="step-5">
+        <div class="step-title">🎯 Scenario Question</div>
+        <div class="step-desc">There's no perfect answer — we want to see how you think.</div>
+
+        <div id="scenario-gm" class="hidden">
+          <div class="scenario-box">
+            <div class="scenario-emoji">📊</div>
+            <h4>Management Scenario</h4>
+            <p>It's a Saturday morning. You're short-staffed — two people called out. The cafe is already getting busy and it's only 8 AM. Your shift doesn't start until 10 AM and you're the opening manager on call. What do you do?</p>
+          </div>
+          <div class="field">
+            <label>Your answer: <span class="req">*</span></label>
+            <textarea name="scenario_answer" placeholder="Walk us through exactly what you'd do, step by step..." required></textarea>
+          </div>
+        </div>
+
+        <div id="scenario-am" class="hidden">
+          <div class="scenario-box">
+            <div class="scenario-emoji">😤</div>
+            <h4>Management Scenario</h4>
+            <p>A guest is upset because their order was made wrong — twice. They're raising their voice and other guests are watching. How do you handle this?</p>
+          </div>
+          <div class="field">
+            <label>Your answer: <span class="req">*</span></label>
+            <textarea name="scenario_answer" placeholder="What do you say? What do you do? What's the outcome?" required></textarea>
+          </div>
+        </div>
+
+        <div id="scenario-tm" class="hidden">
+          <div class="scenario-box">
+            <div class="scenario-emoji">🥤</div>
+            <h4>Team Member Scenario</h4>
+            <p>You're making smoothies during a rush and you realize you made a customer's drink wrong. There's a long line and the manager is busy. What do you do?</p>
+          </div>
+          <div class="field">
+            <label>Your answer: <span class="req">*</span></label>
+            <textarea name="scenario_answer" placeholder="Walk us through what you'd do..." required></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6: Culture Fit & Wrap-Up -->
+      <div class="step" id="step-6">
+        <div class="step-title">🌴 Almost Done!</div>
+        <div class="step-desc">Last few questions — this is where you can really stand out.</div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Why do you want to work at Tropical Smoothie Cafe specifically? <span class="req">*</span></label>
+          <textarea name="why_tsc" placeholder="What draws you to TSC? What excites you about this role?" required></textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>What are your top 2-3 strengths that make you a great fit for this job?</label>
+          <textarea name="strengths" placeholder="Be specific — what do you do better than most people?"></textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:20px" id="five-year-field">
+          <label>Where do you see yourself in 2-3 years professionally?</label>
+          <select name="five_year_goal">
+            <option value="">Select...</option>
+            <option value="growing_here">Growing within Tropical Smoothie Cafe</option>
+            <option value="management">Moving into management</option>
+            <option value="same_role">Staying in my current type of role</option>
+            <option value="other_field">Eventually moving to a different field</option>
+            <option value="school">Going to school / this is part-time</option>
+          </select>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Do you have 2 professional or personal references we could contact?</label>
+          <textarea name="references" placeholder="Name, relationship, phone/email (not required to apply — you can say 'available upon request')"></textarea>
+        </div>
+
+        <div class="field" style="margin-bottom:20px">
+          <label>Have you ever been convicted of a felony? <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="felony_conviction" value="no" required/> No</label>
+            <label class="radio-option"><input type="radio" name="felony_conviction" value="yes"/> Yes</label>
+          </div>
+          <div class="hint">A conviction does not automatically disqualify you. Each case is considered individually.</div>
+        </div>
+
+        <div id="felony-details" class="field hidden" style="margin-bottom:20px">
+          <label>Please briefly explain:</label>
+          <textarea name="felony_details" placeholder="Brief description — date, offense, disposition..."></textarea>
+        </div>
+      </div>
+
+    </form>
+
+    <!-- Navigation -->
+    <div class="form-nav" id="form-nav">
+      <button type="button" class="btn-back" id="btn-back" style="display:none">← Back</button>
+      <button type="button" class="btn-next" id="btn-next">Next Step →</button>
+      <button type="button" class="btn-submit hidden" id="btn-submit">🎉 Submit Application</button>
+    </div>
+  </div>
+
+  <!-- Success Screen -->
+  <div id="success-screen" class="success form-container">
+    <div class="success-icon">🎉</div>
+    <h2>Application Submitted!</h2>
+    <p>Thanks for applying to Tropical Smoothie Cafe! We review all applications within 2-3 business days.</p>
+    <p>If you're a great fit, we'll reach out to schedule an interview. Check your email for a confirmation.</p>
+    <div id="score-display"></div>
+  </div>
+</div>
+
+<script>
+const TOTAL_STEPS = 6;
+let currentStep = 1;
+let selectedPosition = '';
+
+// Load positions
+async function loadPositions() {
+  const res = await fetch('/api/positions');
+  const positions = await res.json();
+  const grid = document.getElementById('pos-grid');
+  grid.innerHTML = positions.map(p => `
+    <div class="pos-card" onclick="selectPosition('${p.id}', '${p.title}')">
+      <span class="pos-badge ${p.type === 'management' ? 'badge-mgmt' : 'badge-hourly'}">
+        ${p.type === 'management' ? '👔 Management' : '⭐ Crew'}
+      </span>
+      <h3>${p.title}</h3>
+      <div class="pos-pay">${p.pay_range}</div>
+      <p class="pos-desc">${p.description}</p>
+      <p class="pos-req">${p.requirements}</p>
+      <button class="apply-btn" style="margin-top:16px">Apply Now →</button>
+    </div>
+  `).join('');
+}
+
+function selectPosition(id, title) {
+  selectedPosition = id;
+  document.getElementById('position-input').value = id;
+  document.getElementById('form-pos-label').textContent = '📋 Applying for: ' + title;
+  document.getElementById('position-select').classList.add('hidden');
+  document.getElementById('application-form').classList.remove('hidden');
+
+  // Show/hide management fields
+  const isMgmt = id === 'gm' || id === 'am';
+  document.getElementById('mgmt-fields').classList.toggle('hidden', !isMgmt);
+  document.getElementById('mgmt-behavioral').classList.toggle('hidden', !isMgmt);
+  document.getElementById('tm-behavioral').classList.toggle('hidden', isMgmt);
+  document.getElementById('scenario-gm').classList.toggle('hidden', id !== 'gm');
+  document.getElementById('scenario-am').classList.toggle('hidden', id !== 'am');
+  document.getElementById('scenario-tm').classList.toggle('hidden', id !== 'tm');
+
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Availability toggles
+document.querySelectorAll('.avail-item').forEach(item => {
+  item.addEventListener('click', () => {
+    item.classList.toggle('selected');
+    const field = item.dataset.field;
+    const val = item.classList.contains('selected') ? 'yes' : 'no';
+    document.querySelector(`input[name="${field}"]`).value = val;
+  });
+});
+
+// Radio option styling
+document.addEventListener('change', e => {
+  if (e.target.type === 'radio') {
+    const group = e.target.closest('.radio-group');
+    if (group) {
+      group.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+      e.target.closest('.radio-option').classList.add('selected');
+    }
+    // Felony details
+    if (e.target.name === 'felony_conviction') {
+      document.getElementById('felony-details').classList.toggle('hidden', e.target.value !== 'yes');
+    }
+  }
+});
+
+function updateProgress() {
+  const pct = ((currentStep - 1) / TOTAL_STEPS) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `Step ${currentStep} of ${TOTAL_STEPS}`;
+  document.getElementById('btn-back').style.display = currentStep > 1 ? 'block' : 'none';
+  const isLast = currentStep === TOTAL_STEPS;
+  document.getElementById('btn-next').classList.toggle('hidden', isLast);
+  document.getElementById('btn-submit').classList.toggle('hidden', !isLast);
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  currentStep = n;
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function validateStep() {
+  const step = document.getElementById('step-' + currentStep);
+  const required = step.querySelectorAll('[required]');
+  let valid = true;
+  required.forEach(el => {
+    const field = el.closest('.field');
+    if (!el.value.trim()) {
+      if (field) { field.classList.add('error'); const em = field.querySelector('.error-msg'); if(em) em.style.display='block'; }
+      valid = false;
+    } else {
+      if (field) { field.classList.remove('error'); const em = field.querySelector('.error-msg'); if(em) em.style.display='none'; }
+    }
+  });
+  // Check radio groups
+  const radioGroups = step.querySelectorAll('.radio-group');
+  radioGroups.forEach(group => {
+    const checked = group.querySelector('input:checked');
+    if (!checked && group.querySelector('input[required]')) valid = false;
+  });
+  return valid;
+}
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (!validateStep()) return;
+  showStep(currentStep + 1);
+});
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  showStep(currentStep - 1);
+});
+
+document.getElementById('btn-submit').addEventListener('click', async () => {
+  if (!validateStep()) return;
+  const btn = document.getElementById('btn-submit');
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  const formData = new FormData(document.getElementById('app-form'));
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch('/api/apply', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    const result = await res.json();
+    if (result.success) {
+      document.getElementById('application-form').classList.add('hidden');
+      document.getElementById('success-screen').classList.add('show');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else throw new Error(result.error);
+  } catch (err) {
+    alert('Error submitting application. Please try again or call us directly.');
+    btn.textContent = '🎉 Submit Application';
+    btn.disabled = false;
+  }
+});
+
+loadPositions();
+</script>
+</body>
+</html>

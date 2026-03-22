@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hiring Dashboard | Tropical Smoothie Cafe</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#f5f5f5;color:#1a1a1a}
+:root{--orange:#FF6B2C;--green:#2D8A4E;--yellow:#FFD700;--red:#d32f2f}
+
+.header{background:linear-gradient(135deg,var(--orange),#ff8c42);color:white;padding:20px 28px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:1.4rem;font-weight:800}
+.header p{opacity:.8;font-size:.85rem}
+.logout-btn{padding:8px 16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:8px;color:white;cursor:pointer;font-family:inherit;font-size:.85rem}
+
+/* Login */
+.login{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5}
+.login-card{background:white;padding:40px;border-radius:16px;box-shadow:0 4px 30px rgba(0,0,0,.1);width:100%;max-width:380px;text-align:center}
+.login-card h2{font-size:1.6rem;font-weight:800;margin-bottom:8px;color:var(--orange)}
+.login-card p{color:#666;margin-bottom:24px;font-size:.9rem}
+.login-card input{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:10px;font-family:inherit;font-size:1rem;margin-bottom:12px}
+.login-card input:focus{outline:none;border-color:var(--orange)}
+.login-btn{width:100%;padding:14px;background:var(--orange);color:white;border:none;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:700;cursor:pointer}
+.login-err{color:var(--red);font-size:.85rem;margin-top:8px}
+
+/* Layout */
+.layout{display:flex;min-height:calc(100vh - 62px)}
+.sidebar{width:220px;background:white;padding:20px 0;border-right:1px solid #e0e0e0;flex-shrink:0}
+.sidebar-item{padding:12px 20px;cursor:pointer;font-weight:600;font-size:.9rem;color:#555;display:flex;align-items:center;gap:10px;transition:all .15s}
+.sidebar-item:hover{background:#fff9f0;color:var(--orange)}
+.sidebar-item.active{background:#fff0e8;color:var(--orange);border-right:3px solid var(--orange)}
+.main{flex:1;padding:24px;overflow-auto}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:28px}
+.stat-card{background:white;border-radius:12px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.06);text-align:center}
+.stat-num{font-size:2.5rem;font-weight:900;line-height:1}
+.stat-label{font-size:.8rem;color:#888;font-weight:600;text-transform:uppercase;margin-top:6px}
+.stat-total .stat-num{color:var(--orange)}
+.stat-hot .stat-num{color:#e91e63}
+.stat-review .stat-num{color:#ff9800}
+.stat-hired .stat-num{color:var(--green)}
+.stat-dq .stat-num{color:#9e9e9e}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filter-bar select,.filter-bar input{padding:8px 12px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:.85rem}
+.filter-bar select:focus,.filter-bar input:focus{outline:none;border-color:var(--orange)}
+
+/* Table */
+.table-wrap{background:white;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:#f9f9f9}
+th{padding:12px 16px;text-align:left;font-size:.75rem;font-weight:800;text-transform:uppercase;color:#888;letter-spacing:.5px;border-bottom:1px solid #e0e0e0}
+td{padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:.9rem;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa;cursor:pointer}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;text-transform:uppercase}
+.status-hot{background:#fce4ec;color:#c2185b}
+.status-review{background:#fff3e0;color:#e65100}
+.status-low{background:#f5f5f5;color:#757575}
+.status-disqualified{background:#f5f5f5;color:#9e9e9e;text-decoration:line-through}
+.status-interviewed{background:#e8f5e9;color:var(--green)}
+.status-hired{background:#e8f5e9;color:var(--green)}
+.status-new{background:#e3f2fd;color:#1565c0}
+.score-bar{display:flex;align-items:center;gap:8px}
+.score-fill{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--orange),var(--green))}
+.pos-badge{padding:3px 8px;border-radius:6px;font-size:.7rem;font-weight:700;text-transform:uppercase}
+.pos-gm{background:#e8f5e9;color:var(--green)}
+.pos-am{background:#fff3e0;color:#e65100}
+.pos-tm{background:#e3f2fd;color:#1565c0}
+
+/* Application Detail */
+.detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.detail-header h2{font-size:1.5rem;font-weight:800}
+.back-btn{padding:8px 16px;background:#f5f5f5;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:600}
+.section{background:white;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.section h3{font-size:.8rem;font-weight:800;text-transform:uppercase;color:#888;margin-bottom:16px;letter-spacing:.5px}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.detail-item{font-size:.9rem}
+.detail-item .key{color:#888;font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:2px}
+.detail-item .val{font-weight:600}
+.answer-block{background:#f9f9f9;border-radius:8px;padding:14px;font-size:.9rem;line-height:1.6;white-space:pre-wrap}
+.score-big{font-size:3rem;font-weight:900;text-align:center;line-height:1}
+.score-label{text-align:center;font-size:.8rem;color:#888;margin-top:4px}
+.action-bar{display:flex;gap:10px;flex-wrap:wrap}
+.action-bar select,.action-bar input,.action-bar textarea{padding:8px 12px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:.85rem;flex:1}
+.action-bar button{padding:8px 18px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;font-weight:700}
+.btn-save{background:var(--green);color:white}
+.btn-hire{background:var(--green);color:white;padding:10px 24px!important;font-size:.95rem!important}
+.btn-dq{background:#f5f5f5;color:#999}
+
+.empty{text-align:center;padding:60px 20px;color:#aaa}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen" class="login">
+  <div class="login-card">
+    <h2>🌴 Hiring Dashboard</h2>
+    <p>Tropical Smoothie Cafe — Admin Access</p>
+    <input type="password" id="token-input" placeholder="Admin password" onkeypress="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-err hidden" id="login-err">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="main-app" class="hidden">
+  <div class="header">
+    <div>
+      <h1>🌴 Hiring Dashboard</h1>
+      <p>Tropical Smoothie Cafe</p>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="sidebar-item active" onclick="showView('dashboard')">📊 Dashboard</div>
+      <div class="sidebar-item" onclick="showView('applications')">📋 All Applications</div>
+      <div class="sidebar-item" onclick="filterAndShow('hot')">🔥 Hot Candidates</div>
+      <div class="sidebar-item" onclick="filterAndShow('review')">👀 Needs Review</div>
+      <div class="sidebar-item" onclick="filterAndShow('interviewed')">💬 Interviewed</div>
+      <div class="sidebar-item" onclick="filterAndShow('hired')">✅ Hired</div>
+      <div class="sidebar-item" onclick="filterAndShow('disqualified')">❌ Disqualified</div>
+      <hr style="margin:10px 0;border-color:#f0f0f0"/>
+      <div class="sidebar-item" onclick="filterPos('gm')">👔 GM Apps</div>
+      <div class="sidebar-item" onclick="filterPos('am')">👔 AM Apps</div>
+      <div class="sidebar-item" onclick="filterPos('tm')">⭐ Team Member</div>
+    </div>
+
+    <div class="main" id="main-content">
+      <!-- Dashboard -->
+      <div id="view-dashboard">
+        <div class="stats-grid" id="stats-grid"></div>
+        <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:12px">Recent Applications</h3>
+        <div class="table-wrap" id="recent-table"></div>
+      </div>
+
+      <!-- Applications List -->
+      <div id="view-applications" class="hidden">
+        <div class="filter-bar">
+          <select id="filter-pos" onchange="loadApps()">
+            <option value="">All Positions</option>
+            <option value="gm">General Manager</option>
+            <option value="am">Assistant Manager</option>
+            <option value="tm">Team Member</option>
+          </select>
+          <select id="filter-status" onchange="loadApps()">
+            <option value="">All Statuses</option>
+            <option value="hot">🔥 Hot</option>
+            <option value="review">👀 Review</option>
+            <option value="new">New</option>
+            <option value="interviewed">Interviewed</option>
+            <option value="hired">Hired</option>
+            <option value="disqualified">Disqualified</option>
+            <option value="low">Low Priority</option>
+          </select>
+          <button onclick="loadApps()" style="padding:8px 14px;background:var(--orange);color:white;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">Refresh</button>
+        </div>
+        <div class="table-wrap" id="apps-table"></div>
+      </div>
+
+      <!-- Application Detail -->
+      <div id="view-detail" class="hidden">
+        <div id="detail-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let token = sessionStorage.getItem('admin_token') || '';
+let currentFilter = { pos: '', status: '' };
+
+function doLogin() {
+  const t = document.getElementById('token-input').value;
+  fetch('/api/admin/stats', { headers: { 'x-admin-token': t } })
+    .then(r => {
+      if (r.ok) {
+        token = t;
+        sessionStorage.setItem('admin_token', t);
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-app').classList.remove('hidden');
+        loadDashboard();
+      } else {
+        document.getElementById('login-err').classList.remove('hidden');
+      }
+    });
+}
+
+function logout() {
+  sessionStorage.removeItem('admin_token');
+  location.reload();
+}
+
+async function api(path) {
+  const r = await fetch(path, { headers: { 'x-admin-token': token } });
+  return r.json();
+}
+
+async function apiPatch(path, data) {
+  await fetch(path, { method: 'PATCH', headers: { 'x-admin-token': token, 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+}
+
+function posLabel(p) { return {gm:'General Manager',am:'Assistant Manager',tm:'Team Member'}[p]||p; }
+function posClass(p) { return 'pos-'+p; }
+
+function renderTable(apps, container) {
+  if (!apps.length) { container.innerHTML = '<div class="empty">No applications found</div>'; return; }
+  container.innerHTML = `<table><thead><tr>
+    <th>Name</th><th>Position</th><th>Score</th><th>Status</th><th>Availability</th><th>Applied</th>
+  </tr></thead><tbody>
+  ${apps.map(a => `<tr onclick="viewApp('${a.id}')">
+    <td><strong>${a.first_name||''} ${a.last_name||''}</strong><br><small style="color:#999">${a.phone||''}</small></td>
+    <td><span class="pos-badge ${posClass(a.position)}">${posLabel(a.position)}</span></td>
+    <td>
+      <div class="score-bar">
+        <div class="score-fill" style="width:${Math.min(a.score,100)*0.6}px"></div>
+        <strong>${a.score}</strong>
+      </div>
+    </td>
+    <td><span class="status-badge status-${a.status}">${a.status}</span></td>
+    <td><small>${a.hours_available||'?'} hrs/wk${a.can_work_weekends==='yes'?' • weekends':''}</small></td>
+    <td><small>${new Date(a.applied_at).toLocaleDateString()}</small></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+async function loadDashboard() {
+  const stats = await api('/api/admin/stats');
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card stat-total"><div class="stat-num">${stats.total}</div><div class="stat-label">Total Apps</div></div>
+    <div class="stat-card stat-hot"><div class="stat-num">${stats.hot}</div><div class="stat-label">🔥 Hot</div></div>
+    <div class="stat-card stat-review"><div class="stat-num">${stats.review}</div><div class="stat-label">👀 Review</div></div>
+    <div class="stat-card stat-hired"><div class="stat-num">${stats.hired}</div><div class="stat-label">✅ Hired</div></div>
+    <div class="stat-card stat-dq"><div class="stat-num">${stats.disqualified}</div><div class="stat-label">❌ DQ'd</div></div>
+    ${stats.byPosition.map(p=>`<div class="stat-card"><div class="stat-num" style="color:var(--orange)">${p.count}</div><div class="stat-label">${posLabel(p.position)}</div></div>`).join('')}
+  `;
+  const recent = await api('/api/admin/applications?');
+  renderTable(recent.slice(0,10), document.getElementById('recent-table'));
+}
+
+async function loadApps() {
+  const pos = document.getElementById('filter-pos')?.value || currentFilter.pos;
+  const status = document.getElementById('filter-status')?.value || currentFilter.status;
+  let url = '/api/admin/applications?';
+  if (pos) url += 'position='+pos+'&';
+  if (status) url += 'status='+status+'&';
+  const apps = await api(url);
+  renderTable(apps, document.getElementById('apps-table'));
+}
+
+async function viewApp(id) {
+  const app = await api('/api/admin/applications/'+id);
+  showView('detail');
+  const posName = posLabel(app.position);
+  const scoreColor = app.score >= 70 ? '#2D8A4E' : app.score >= 45 ? '#ff9800' : '#9e9e9e';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <button class="back-btn" onclick="showView('applications')">← Back</button>
+        <h2 style="margin-top:8px">${app.first_name} ${app.last_name}</h2>
+        <span class="pos-badge ${posClass(app.position)}" style="margin-top:4px">${posName}</span>
+        <span class="status-badge status-${app.status}" style="margin-left:8px">${app.status}</span>
+        ${app.disqualified ? `<div style="color:var(--red);font-size:.85rem;margin-top:6px">❌ Disqualified: ${app.disqualify_reason}</div>` : ''}
+      </div>
+      <div style="text-align:center">
+        <div class="score-big" style="color:${scoreColor}">${app.score}</div>
+        <div class="score-label">Score / 100</div>
+        <div style="font-size:.75rem;color:#aaa;margin-top:4px">Applied ${new Date(app.applied_at).toLocaleDateString()}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Contact Information</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="key">Phone</div><div class="val"><a href="tel:${app.phone}">${app.phone||'—'}</a></div></div>
+        <div class="detail-item"><div class="key">Email</div><div class="val"><a href="mailto:${app.email}">${app.email||'—'}</a></div></div>
+        <div class="detail-item"><div class="key">City</div><div class="val">${app.city||'—'}</div></div>
+        <div class="detail-item"><div class="key">Can Start</div><div class="val">${app.available_start||'—'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Availability</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="key">Hours/Week</div><div class="val">${app.hours_available||'—'}</div></div>
+        <div class="detail-item"><div class="key">Mornings</div><div class="val">${app.can_work_mornings==='yes'?'✅ Yes':'❌ No'}</div></div>
+        <div class="detail-item"><div class="key">Evenings</div><div class="val">${app.can_work_evenings==='yes'?'✅ Yes':'❌ No'}</div></div>
+        <div class="detail-item"><div class="key">Weekends</div><div class="val">${app.can_work_weekends==='yes'?'✅ Yes':'❌ No'}</div></div>
+        <div class="detail-item"><div class="key">Holidays</div><div class="val">${app.can_work_holidays==='yes'?'✅ Yes':'❌ No'}</div></div>
+        <div class="detail-item"><div class="key">Work Auth</div><div class="val">${app.legally_authorized==='yes'?'✅ Authorized':'❌ Not Authorized'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Experience</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="key">Years Experience</div><div class="val">${app.years_experience||'—'}</div></div>
+        <div class="detail-item"><div class="key">Food Service</div><div class="val">${app.food_service_experience||'—'}</div></div>
+        <div class="detail-item"><div class="key">Management</div><div class="val">${app.management_experience||'—'}</div></div>
+        <div class="detail-item"><div class="key">Current Employer</div><div class="val">${app.current_employer||'—'}</div></div>
+        <div class="detail-item"><div class="key">Reason Leaving</div><div class="val">${app.reason_leaving||'—'}</div></div>
+        ${app.team_size_managed ? `<div class="detail-item"><div class="key">Team Size</div><div class="val">${app.team_size_managed}</div></div>` : ''}
+        ${app.p_and_l_experience ? `<div class="detail-item"><div class="key">P&L Experience</div><div class="val">${app.p_and_l_experience}</div></div>` : ''}
+        ${app.inventory_experience ? `<div class="detail-item"><div class="key">Inventory Exp</div><div class="val">${app.inventory_experience}</div></div>` : ''}
+        ${app.hiring_experience ? `<div class="detail-item"><div class="key">Hiring Exp</div><div class="val">${app.hiring_experience}</div></div>` : ''}
+      </div>
+    </div>
+
+    ${app.conflict_example||app.sales_improvement_example||app.customer_service_example ? `
+    <div class="section">
+      <h3>Behavioral Questions</h3>
+      ${app.conflict_example ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Conflict Resolution</div><div class="answer-block">${app.conflict_example}</div></div>` : ''}
+      ${app.sales_improvement_example ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Sales Improvement</div><div class="answer-block">${app.sales_improvement_example}</div></div>` : ''}
+      ${app.customer_service_example ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Customer Service</div><div class="answer-block">${app.customer_service_example}</div></div>` : ''}
+      ${app.handle_rush_example ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Handling Rush</div><div class="answer-block">${app.handle_rush_example}</div></div>` : ''}
+    </div>` : ''}
+
+    ${app.scenario_answer ? `
+    <div class="section">
+      <h3>Scenario Answer</h3>
+      <div class="answer-block">${app.scenario_answer}</div>
+    </div>` : ''}
+
+    <div class="section">
+      <h3>Culture Fit</h3>
+      ${app.why_tsc ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Why TSC?</div><div class="answer-block">${app.why_tsc}</div></div>` : ''}
+      ${app.strengths ? `<div style="margin-bottom:16px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">Top Strengths</div><div class="answer-block">${app.strengths}</div></div>` : ''}
+      <div class="detail-grid">
+        ${app.five_year_goal ? `<div class="detail-item"><div class="key">Career Goal</div><div class="val">${app.five_year_goal}</div></div>` : ''}
+        ${app.felony_conviction ? `<div class="detail-item"><div class="key">Felony</div><div class="val">${app.felony_conviction==='yes'?'⚠️ Yes — see details':'✅ No'}</div></div>` : ''}
+      </div>
+      ${app.references ? `<div style="margin-top:12px"><div class="key" style="font-size:.75rem;font-weight:800;color:#888;text-transform:uppercase;margin-bottom:6px">References</div><div class="answer-block">${app.references}</div></div>` : ''}
+    </div>
+
+    <div class="section">
+      <h3>Actions</h3>
+      <div class="action-bar" style="margin-bottom:12px">
+        <select id="status-select">
+          <option value="new" ${app.status==='new'?'selected':''}>New</option>
+          <option value="hot" ${app.status==='hot'?'selected':''}>🔥 Hot</option>
+          <option value="review" ${app.status==='review'?'selected':''}>👀 Review</option>
+          <option value="interviewed" ${app.status==='interviewed'?'selected':''}>💬 Interviewed</option>
+          <option value="hired" ${app.status==='hired'?'selected':''}>✅ Hired</option>
+          <option value="disqualified" ${app.status==='disqualified'?'selected':''}>❌ Disqualified</option>
+          <option value="low" ${app.status==='low'?'selected':''}>📋 Low Priority</option>
+        </select>
+        <input type="date" id="interview-date" placeholder="Interview date" value="${app.interview_date||''}"/>
+        <button class="btn-save" onclick="saveStatus('${app.id}')">Save</button>
+      </div>
+      <div class="action-bar">
+        <textarea id="app-notes" placeholder="Notes about this candidate..." style="min-height:80px">${app.notes||''}</textarea>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:10px">
+        <button class="btn-save" onclick="saveNotes('${app.id}')">Save Notes</button>
+        ${!app.hired ? `<button class="btn-hire" onclick="markHired('${app.id}')">✅ Mark as Hired</button>` : '<span style="color:var(--green);font-weight:700">✅ HIRED</span>'}
+      </div>
+    </div>
+  `;
+}
+
+async function saveStatus(id) {
+  const status = document.getElementById('status-select').value;
+  const interviewDate = document.getElementById('interview-date').value;
+  await apiPatch('/api/admin/applications/'+id, { status, interview_date: interviewDate||null });
+  alert('Status saved!');
+}
+
+async function saveNotes(id) {
+  const notes = document.getElementById('app-notes').value;
+  await apiPatch('/api/admin/applications/'+id, { notes });
+  alert('Notes saved!');
+}
+
+async function markHired(id) {
+  if (!confirm('Mark this applicant as hired?')) return;
+  await apiPatch('/api/admin/applications/'+id, { status: 'hired', hired: 1 });
+  alert('Marked as hired! 🎉');
+  viewApp(id);
+}
+
+function showView(view) {
+  ['dashboard','applications','detail'].forEach(v => {
+    document.getElementById('view-'+v).classList.toggle('hidden', v !== view);
+  });
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  if (view === 'dashboard') loadDashboard();
+  if (view === 'applications') loadApps();
+}
+
+function filterAndShow(status) {
+  currentFilter.status = status;
+  currentFilter.pos = '';
+  showView('applications');
+  if (document.getElementById('filter-status')) document.getElementById('filter-status').value = status;
+  if (document.getElementById('filter-pos')) document.getElementById('filter-pos').value = '';
+  loadApps();
+}
+
+function filterPos(pos) {
+  currentFilter.pos = pos;
+  currentFilter.status = '';
+  showView('applications');
+  if (document.getElementById('filter-pos')) document.getElementById('filter-pos').value = pos;
+  if (document.getElementById('filter-status')) document.getElementById('filter-status').value = '';
+  loadApps();
+}
+
+// Auto-login if token exists
+if (token) {
+  fetch('/api/admin/stats', { headers: { 'x-admin-token': token } })
+    .then(r => {
+      if (r.ok) {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-app').classList.remove('hidden');
+        loadDashboard();
+      } else { sessionStorage.removeItem('admin_token'); token = ''; }
+    });
+}
+</script>
+</body>
+</html>
