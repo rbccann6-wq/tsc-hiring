@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Simple JSON Database ───
-const DB_PATH = process.env.DB_PATH || './data.json';
+const DB_PATH = process.env.DB_PATH || '/data/hiring.json';
 
 function loadDB() {
   try {
