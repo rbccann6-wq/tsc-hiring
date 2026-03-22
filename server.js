@@ -325,3 +325,193 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ TSC Hiring App running on port ${PORT}`));
+
+// ─────────────────────────────────────────────
+// INBOUND SMS BOT — Conversational Text Hiring
+// ─────────────────────────────────────────────
+
+// In-memory conversation state (persisted to DB)
+function getConversation(phone) {
+  db = loadDB();
+  if (!db.conversations) db.conversations = {};
+  return db.conversations[phone] || null;
+}
+
+function saveConversation(phone, state) {
+  db = loadDB();
+  if (!db.conversations) db.conversations = {};
+  db.conversations[phone] = state;
+  saveDB(db);
+}
+
+function clearConversation(phone) {
+  db = loadDB();
+  if (db.conversations) delete db.conversations[phone];
+  saveDB(db);
+}
+
+// Bot steps
+const BOT_STEPS = {
+  START: 'start',
+  GET_NAME: 'get_name',
+  GET_POSITION: 'get_position',
+  GET_AVAILABILITY: 'get_availability',
+  GET_HOURS: 'get_hours',
+  GET_EXPERIENCE: 'get_experience',
+  GET_START: 'get_start',
+  DONE: 'done',
+};
+
+function parsePosition(text) {
+  const t = text.toLowerCase();
+  if (t.includes('general') || t.includes('gm') || t === '1') return 'gm';
+  if (t.includes('assistant') || t.includes('am') || t === '2') return 'am';
+  if (t.includes('team') || t.includes('crew') || t.includes('member') || t === '3') return 'tm';
+  return null;
+}
+
+async function handleInboundSMS(from, body) {
+  const text = (body || '').trim();
+  let conv = getConversation(from);
+
+  // Fresh start or reset keywords
+  const isStart = !conv || ['hi','hello','hey','job','jobs','hiring','apply','start','yes'].includes(text.toLowerCase());
+
+  if (!conv || isStart) {
+    const newConv = { step: BOT_STEPS.GET_NAME, phone: from, data: {}, started_at: new Date().toISOString() };
+    saveConversation(from, newConv);
+    return await sendSMS(from, "Hi! 🌴 Thanks for your interest in joining Tropical Smoothie Cafe! I'm going to ask you a few quick questions to get your application started.\n\nFirst — what's your first and last name?");
+  }
+
+  const step = conv.step;
+
+  if (step === BOT_STEPS.GET_NAME) {
+    const parts = text.split(' ');
+    conv.data.first_name = parts[0];
+    conv.data.last_name = parts.slice(1).join(' ') || '';
+    conv.step = BOT_STEPS.GET_POSITION;
+    saveConversation(from, conv);
+    return await sendSMS(from, `Nice to meet you, ${conv.data.first_name}! 👋\n\nWhich position are you interested in?\n\n1️⃣ General Manager\n2️⃣ Assistant Manager\n3️⃣ Team Member\n\nReply with the number or name.`);
+  }
+
+  if (step === BOT_STEPS.GET_POSITION) {
+    const pos = parsePosition(text);
+    if (!pos) {
+      return await sendSMS(from, "Sorry, I didn't catch that! Reply 1 for General Manager, 2 for Assistant Manager, or 3 for Team Member.");
+    }
+    conv.data.position = pos;
+    conv.step = BOT_STEPS.GET_AVAILABILITY;
+    saveConversation(from, conv);
+    return await sendSMS(from, `Great choice! 💪\n\nWhat days are you available to work? (Reply with all that apply)\n\n• Weekdays\n• Weekends\n• Both\n• Mornings only\n• Evenings only`);
+  }
+
+  if (step === BOT_STEPS.GET_AVAILABILITY) {
+    const t = text.toLowerCase();
+    conv.data.can_work_weekends = (t.includes('weekend') || t.includes('both')) ? 'yes' : 'no';
+    conv.data.can_work_mornings = (t.includes('morning') || t.includes('both') || t.includes('weekday')) ? 'yes' : 'no';
+    conv.data.can_work_evenings = (t.includes('evening') || t.includes('both') || t.includes('weekday')) ? 'yes' : 'no';
+    conv.step = BOT_STEPS.GET_HOURS;
+    saveConversation(from, conv);
+    return await sendSMS(from, `Got it! How many hours per week are you looking for?\n\n1️⃣ Less than 20 hrs (part-time)\n2️⃣ 20-30 hrs\n3️⃣ 30-40 hrs\n4️⃣ 40+ hrs (full-time)`);
+  }
+
+  if (step === BOT_STEPS.GET_HOURS) {
+    const t = text.toLowerCase();
+    let hours = 'under_20';
+    if (t === '2' || t.includes('20-30') || t.includes('20')) hours = '20-30';
+    else if (t === '3' || t.includes('30-40') || t.includes('30')) hours = '30-40';
+    else if (t === '4' || t.includes('40') || t.includes('full')) hours = '40+';
+    conv.data.hours_available = hours;
+    conv.step = BOT_STEPS.GET_EXPERIENCE;
+    saveConversation(from, conv);
+    return await sendSMS(from, `Do you have any previous food service or restaurant experience?\n\n1️⃣ Yes\n2️⃣ No — this would be my first food service job`);
+  }
+
+  if (step === BOT_STEPS.GET_EXPERIENCE) {
+    const t = text.toLowerCase();
+    conv.data.food_service_experience = (t === '1' || t.includes('yes')) ? 'yes' : 'no';
+    conv.step = BOT_STEPS.GET_START;
+    saveConversation(from, conv);
+    return await sendSMS(from, `Almost done! When could you start?\n\n1️⃣ Immediately\n2️⃣ Within 1 week\n3️⃣ 2 weeks notice\n4️⃣ About 1 month`);
+  }
+
+  if (step === BOT_STEPS.GET_START) {
+    const t = text.toLowerCase();
+    let start = 'immediately';
+    if (t === '2' || t.includes('1 week')) start = '1_week';
+    else if (t === '3' || t.includes('2 week')) start = '2_weeks';
+    else if (t === '4' || t.includes('month')) start = '1_month';
+    conv.data.available_start = start;
+    conv.data.phone = from;
+    conv.data.legally_authorized = 'yes'; // assumed for text applicants
+    conv.data.over_18 = 'yes';
+
+    // Score and save application
+    const { score, disqualified, disqualifyReason, status } = scoreApplication(conv.data, conv.data.position);
+    const posLabel = { gm: 'General Manager', am: 'Assistant Manager', tm: 'Team Member' }[conv.data.position] || conv.data.position;
+    const id = uuidv4();
+
+    const application = {
+      id,
+      applied_at: new Date().toISOString(),
+      status: disqualified ? 'disqualified' : status,
+      score, disqualified, disqualify_reason: disqualifyReason,
+      hired: false, notes: '', interview_date: null,
+      sms_sent: false, sms_log: [],
+      source: 'sms_inbound',
+      ...conv.data
+    };
+
+    db = loadDB();
+    db.applications.push(application);
+    saveDB(db);
+    clearConversation(from);
+
+    // Notify owner
+    if (process.env.NOTIFY_EMAIL) {
+      await sendEmail(process.env.NOTIFY_EMAIL,
+        `📱 New SMS Application — ${conv.data.first_name} ${conv.data.last_name} (Score: ${score})`,
+        `<h2>New SMS Application!</h2>
+         <p><b>Via text to (334) 489-1215</b></p>
+         <p><b>Position:</b> ${posLabel}</p>
+         <p><b>Name:</b> ${conv.data.first_name} ${conv.data.last_name}</p>
+         <p><b>Phone:</b> ${from}</p>
+         <p><b>Score:</b> ${score}/100 — ${status.toUpperCase()}</p>
+         <p><b>Hours:</b> ${conv.data.hours_available} | Weekends: ${conv.data.can_work_weekends} | Can start: ${start}</p>
+         <hr><p><a href="${process.env.APP_URL||''}/admin">View in Dashboard →</a></p>`
+      );
+    }
+
+    // Final response
+    let finalMsg;
+    if (disqualified) {
+      finalMsg = `Thanks for your interest, ${conv.data.first_name}! Unfortunately we're not able to move forward at this time, but we appreciate you reaching out. 🌴`;
+    } else if (status === 'hot') {
+      finalMsg = `🎉 Great news, ${conv.data.first_name}! Your application looks strong. We'd love to schedule an interview!\n\nWhat days and times work best for you this week? We'll get something on the calendar ASAP!`;
+    } else {
+      finalMsg = `Thanks ${conv.data.first_name}! We received your application for the ${posLabel} position. 🌴\n\nWe review all applications within 2-3 business days and will text you here if we'd like to schedule an interview. Have a great day!`;
+    }
+
+    return await sendSMS(from, finalMsg);
+  }
+
+  // Fallback
+  return await sendSMS(from, `Hi! Text "jobs" to start a new application for Tropical Smoothie Cafe, or visit ${process.env.APP_URL || 'our website'} to apply online.`);
+}
+
+// OpenPhone webhook — inbound messages
+app.post('/webhook/openphone', async (req, res) => {
+  res.sendStatus(200); // Acknowledge immediately
+  try {
+    const event = req.body;
+    if (event.type !== 'message.received') return;
+    const msg = event.data?.object;
+    if (!msg || msg.direction !== 'incoming') return;
+    const from = msg.from;
+    const body = msg.body || '';
+    console.log(`Inbound SMS from ${from}: ${body}`);
+    await handleInboundSMS(from, body);
+  } catch(e) {
+    console.error('Webhook error:', e.message);
+  }
+});
