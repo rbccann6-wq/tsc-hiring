@@ -33,7 +33,7 @@ function getDefaultPositions() {
     { id: 'am', title: 'Assistant Manager', type: 'management', pay_range: '$15-$19/hr',
       description: 'Support the GM in running a high-energy, guest-first cafe. Help develop the team, manage shifts, and drive sales.',
       requirements: '1+ year food service experience, team leadership experience preferred', active: true },
-    { id: 'tm', title: 'Team Member', type: 'hourly', pay_range: '$10-$13/hr',
+    { id: 'tm', title: 'Team Member', type: 'hourly', pay_range: '$8-$10/hr',
       description: "Be the face of our cafe! Blend amazing smoothies, create great food, and make every guest's day better.",
       requirements: 'Must be 16+, no experience required — great attitude a must!', active: true },
   ];
