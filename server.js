@@ -515,3 +515,20 @@ app.post('/webhook/openphone', async (req, res) => {
     console.error('Webhook error:', e.message);
   }
 });
+
+// ─────────────────────────────────────────────
+// TWILIO inbound SMS webhook (same bot logic)
+// ─────────────────────────────────────────────
+app.post('/webhook/twilio-sms', express.urlencoded({ extended: false }), async (req, res) => {
+  const from = req.body.From;
+  const body = req.body.Body || '';
+  console.log(`Twilio inbound SMS from ${from}: ${body}`);
+  // Run through same bot — response goes via sendSMS (OpenPhone API)
+  // For Twilio, reply via TwiML instead
+  try {
+    await handleInboundSMS(from, body);
+  } catch(e) { console.error('Twilio SMS handler error:', e.message); }
+  // Return empty TwiML (we already sent via OpenPhone/Twilio REST)
+  res.set('Content-Type', 'text/xml');
+  res.send('<Response></Response>');
+});
