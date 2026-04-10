@@ -62,9 +62,9 @@ async function sendEmail(to, subject, html) {
 }
 
 // ─── SMS via OpenPhone ───
-async function sendSMS(to, text) {
+async function sendSMS(to, text, fromOverride) {
   const apiKey = process.env.OPENPHONE_API_KEY;
-  const from = process.env.OPENPHONE_NUMBER; // e.g. +13344891215
+  const from = fromOverride || process.env.OPENPHONE_NUMBER; // e.g. +13344891215
   if (!apiKey || !from) { console.log('OpenPhone not configured — skipping SMS'); return { ok: false, reason: 'not_configured' }; }
 
   // Normalize phone number to E.164
@@ -625,6 +625,72 @@ app.post('/webhook/twilio-sms', async (req, res) => {
   } catch(e) {
     console.error('Twilio SMS error:', e.message);
     res.send('<Response><Message>Hi! Text JOBS to start your application for Tropical Smoothie Cafe!</Message></Response>');
+  }
+});
+
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// RAINSOFT CAREERS — OpenPhone inbound SMS handler
+// Routes: +13344895815 (RainSoft Careers OpenPhone line)
+// Auto-replies with job info + pushes every message to Telegram
+// ─────────────────────────────────────────────
+const RAINSOFT_CAREERS_FROM = '+13344895815';
+const RAINSOFT_CAREERS_APPLY_URL = 'https://tinyurl.com/rainsoftcareers';
+const RAINSOFT_CAREERS_VOICE_NUMBER = '(334) 489-5815';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8703100352:AAHEics63zNfXta-K4T7QFX9O9bQX4C7q0Q';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '6664842380';
+
+async function notifyTelegram(text) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    });
+  } catch(e) { console.error('Telegram notify error:', e.message); }
+}
+
+function rainsoftAutoReplyText(firstTime) {
+  if (firstTime) {
+    return `Hi! 👋 Thanks for texting RainSoft of the Wiregrass about our Service Admin opening!\n\nApply in 3 minutes — call or tap:\n📞 ${RAINSOFT_CAREERS_VOICE_NUMBER}\n🔗 ${RAINSOFT_CAREERS_APPLY_URL}\n\nOr reply here with your name, phone, and a little about your experience and we'll pass it straight to Rebecca!`;
+  }
+  return `Thanks! We've passed your message along to Rebecca — she'll get back to you personally. If you'd like to complete a full application, tap ${RAINSOFT_CAREERS_APPLY_URL} or call ${RAINSOFT_CAREERS_VOICE_NUMBER}. 🌊`;
+}
+
+app.post('/webhook/openphone-rainsoft', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const event = req.body || {};
+    if (event.type !== 'message.received') return;
+    const msg = event.data?.object;
+    if (!msg || msg.direction !== 'incoming') return;
+    const from = msg.from;
+    const to = (msg.to && msg.to[0]) || msg.to || RAINSOFT_CAREERS_FROM;
+    const body = msg.body || msg.text || '';
+    console.log(`[RainSoft] Inbound SMS from ${from} → ${to}: ${body}`);
+
+    db = loadDB();
+    if (!db.rainsoft_sms_conversations) db.rainsoft_sms_conversations = {};
+    const seenBefore = !!db.rainsoft_sms_conversations[from];
+    db.rainsoft_sms_conversations[from] = {
+      last_message: body,
+      last_at: new Date().toISOString(),
+      messages: [...(db.rainsoft_sms_conversations[from]?.messages || []), { from, body, at: new Date().toISOString() }],
+    };
+    saveDB(db);
+
+    // Notify Rebecca in Telegram
+    await notifyTelegram(
+      `📱 RainSoft Careers text\n` +
+      `From: ${from}\n` +
+      `Message: ${body}\n` +
+      `${seenBefore ? '(continuing conversation)' : '(new contact)'}`
+    );
+
+    // Auto-reply
+    await sendSMS(from, rainsoftAutoReplyText(!seenBefore), RAINSOFT_CAREERS_FROM);
+  } catch(e) {
+    console.error('RainSoft OpenPhone webhook error:', e.message);
   }
 });
 
