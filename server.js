@@ -761,7 +761,18 @@ app.post('/webhook/elevenlabs-rainsoft-careers', async (req, res) => {
     const secs = durationSecs % 60;
     const durStr = `${mins}:${String(secs).padStart(2, '0')}`;
 
-    let header = `📝 NEW SERVICE ADMIN APPLICATION (phone call)\n━━━━━━━━━━━━━━━━━━\n`;
+    // Header varies by agent — careers agent vs main answering service
+    const CAREERS_AGENT_ID = 'agent_1001knw9y424e4mvr5bhsssadmp8';
+    const ANSWERING_AGENT_ID = 'agent_6101km8g2sm8efkskb2vqtbp514t';
+    let headerTitle;
+    if (agentId === CAREERS_AGENT_ID) {
+      headerTitle = '📝 NEW SERVICE ADMIN APPLICATION (phone call)';
+    } else if (agentId === ANSWERING_AGENT_ID) {
+      headerTitle = '☎️ RAINSOFT ANSWERING LINE (phone call)';
+    } else {
+      headerTitle = '📞 RAINSOFT CALL';
+    }
+    let header = `${headerTitle}\n━━━━━━━━━━━━━━━━━━\n`;
     header += `${completeness}\n`;
     header += `Duration: ${durStr} | Status: ${status}${terminationReason ? ' (' + terminationReason + ')' : ''}\n`;
     if (phoneNumber) header += `Caller ID: ${phoneNumber}\n`;
