@@ -704,7 +704,130 @@ app.post('/webhook/openphone-rainsoft', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// ElevenLabs post-call webhook
+// RAINSOFT CAREERS — ElevenLabs post-call webhook
+// Fires on EVERY call (complete or hung-up) and pushes a
+// formatted summary + full transcript to Telegram so nothing is
+// lost when a caller bails mid-flow.
+// ─────────────────────────────────────────────
+app.post('/webhook/elevenlabs-rainsoft-careers', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const body = req.body || {};
+    // ElevenLabs sends: { type, event_timestamp, data: { conversation_id, agent_id, status, transcript, analysis, metadata, ... } }
+    const data = body.data || body;
+    const conversationId = data.conversation_id || data.conversationId || 'unknown';
+    const agentId = data.agent_id || '';
+    const status = data.status || '';
+    const md = data.metadata || {};
+    const durationSecs = md.call_duration_secs || data.call_duration_secs || 0;
+    const terminationReason = md.termination_reason || data.termination_reason || '';
+    const startTime = md.start_time_unix_secs || data.start_time_unix_secs;
+    const phoneNumber = md.phone_call?.external_number || md.caller_id || md.from_number || '';
+
+    const analysis = data.analysis || {};
+    const summary = analysis.transcript_summary || analysis.summary || '';
+    const callSuccessful = analysis.call_successful || '';
+
+    // Normalize transcript array
+    const transcript = Array.isArray(data.transcript) ? data.transcript : [];
+    const lines = transcript.map(m => {
+      const role = m.role === 'agent' ? '🤖' : m.role === 'user' ? '👤' : '•';
+      const text = (m.message || m.content || m.text || '').toString().trim();
+      return text ? `${role} ${text}` : '';
+    }).filter(Boolean);
+
+    // Extract structured fields from data_collection_results if present
+    const dcr = analysis.data_collection_results || analysis.collected_data || {};
+    const extracted = {};
+    for (const [k, v] of Object.entries(dcr)) {
+      if (v && typeof v === 'object') {
+        extracted[k] = v.value || v.result || JSON.stringify(v);
+      } else {
+        extracted[k] = v;
+      }
+    }
+
+    // Heuristic fallback: pull name/phone/email/city directly from user messages
+    const userText = transcript.filter(m => m.role === 'user').map(m => (m.message || '').toString()).join(' | ');
+    const phoneMatch = userText.match(/(\+?1?\s*[-.()]?\s*\d{3}\s*[-.()]?\s*\d{3}\s*[-.()]?\s*\d{4})/);
+    const emailMatch = userText.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+
+    // Build header
+    const completeness = (terminationReason || '').toLowerCase().includes('remote party') || (terminationReason || '').toLowerCase().includes('hangup') || status === 'failed'
+      ? '⚠️ CALL ENDED EARLY — review transcript for partial info'
+      : '✅ Completed call';
+
+    const mins = Math.floor(durationSecs / 60);
+    const secs = durationSecs % 60;
+    const durStr = `${mins}:${String(secs).padStart(2, '0')}`;
+
+    let header = `📝 NEW SERVICE ADMIN APPLICATION (phone call)\n━━━━━━━━━━━━━━━━━━\n`;
+    header += `${completeness}\n`;
+    header += `Duration: ${durStr} | Status: ${status}${terminationReason ? ' (' + terminationReason + ')' : ''}\n`;
+    if (phoneNumber) header += `Caller ID: ${phoneNumber}\n`;
+    if (phoneMatch) header += `Callback # mentioned: ${phoneMatch[1]}\n`;
+    if (emailMatch) header += `Email mentioned: ${emailMatch[0]}\n`;
+    header += `━━━━━━━━━━━━━━━━━━\n`;
+
+    if (Object.keys(extracted).length) {
+      header += `Extracted:\n`;
+      for (const [k, v] of Object.entries(extracted)) {
+        if (v != null && String(v).trim()) header += `  • ${k}: ${v}\n`;
+      }
+      header += `━━━━━━━━━━━━━━━━━━\n`;
+    }
+
+    if (summary) {
+      header += `Summary:\n${summary}\n━━━━━━━━━━━━━━━━━━\n`;
+    }
+
+    // Telegram has a 4096 char limit per message — chunk if needed
+    const transcriptBody = lines.length ? `Full transcript:\n${lines.join('\n')}` : '(no transcript captured)';
+    const full = header + transcriptBody + `\n\nReview in ElevenLabs: conv_id=${conversationId}`;
+
+    const MAX = 4000;
+    if (full.length <= MAX) {
+      await notifyTelegram(full);
+    } else {
+      // Send header first, then transcript chunks
+      await notifyTelegram(header + `Full transcript follows in the next message(s)...`);
+      let chunk = '';
+      for (const line of lines) {
+        if ((chunk + '\n' + line).length > MAX) {
+          await notifyTelegram(chunk);
+          chunk = line;
+        } else {
+          chunk = chunk ? chunk + '\n' + line : line;
+        }
+      }
+      if (chunk) await notifyTelegram(chunk);
+      await notifyTelegram(`Review in ElevenLabs: conv_id=${conversationId}`);
+    }
+
+    // Persist to DB for record-keeping
+    db = loadDB();
+    if (!db.rainsoft_careers_calls) db.rainsoft_careers_calls = [];
+    db.rainsoft_careers_calls.push({
+      conversation_id: conversationId,
+      at: new Date().toISOString(),
+      duration_secs: durationSecs,
+      status,
+      termination_reason: terminationReason,
+      phone: phoneNumber,
+      extracted_callback: phoneMatch ? phoneMatch[1] : null,
+      extracted_email: emailMatch ? emailMatch[0] : null,
+      summary,
+      transcript_length: lines.length,
+    });
+    saveDB(db);
+  } catch(e) {
+    console.error('RainSoft ElevenLabs webhook error:', e.message);
+    try { await notifyTelegram(`⚠️ RainSoft careers call webhook failed: ${e.message}`); } catch {}
+  }
+});
+
+// ─────────────────────────────────────────────
+// ElevenLabs post-call webhook (TSC — legacy)
 // Parses APPLICATION_DATA from transcript → saves to dashboard
 // ─────────────────────────────────────────────
 app.post('/webhook/elevenlabs-call', async (req, res) => {
