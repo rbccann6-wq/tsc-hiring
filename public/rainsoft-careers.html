@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="robots" content="index,follow">
+<title>Now Hiring: Service Admin — RainSoft of the Wiregrass</title>
+<meta name="description" content="RainSoft of the Wiregrass is hiring a Service Admin. Monday–Friday, no nights or weekends. Apply in 3 minutes by phone, text, or right here online.">
+<meta property="og:title" content="Now Hiring: Service Admin — RainSoft of the Wiregrass">
+<meta property="og:description" content="Monday–Friday, no nights or weekends. Apply in 3 minutes by phone, text, or online.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #1B3A6B;
+  --navy-dark: #0F2445;
+  --aqua: #00B4D8;
+  --aqua-light: #90E0EF;
+  --cream: #F8FAFC;
+  --text: #0F172A;
+  --muted: #64748B;
+  --border: #E2E8F0;
+  --shadow: 0 10px 40px -10px rgba(27, 58, 107, 0.25);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text);
+  background: var(--cream);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+/* Header */
+header {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
+  color: white;
+  padding: 28px 0;
+  border-bottom: 4px solid var(--aqua);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo-circle {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--aqua);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  color: var(--navy-dark);
+  font-size: 22px;
+  box-shadow: 0 4px 12px rgba(0, 180, 216, 0.4);
+}
+.brand-text { line-height: 1.2; }
+.brand-text .name { font-weight: 800; font-size: 18px; }
+.brand-text .tagline { font-size: 13px; color: var(--aqua-light); font-weight: 500; }
+
+/* Hero */
+.hero {
+  background: white;
+  padding: 56px 0 40px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.badge {
+  display: inline-block;
+  background: var(--aqua-light);
+  color: var(--navy-dark);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+.hero h1 {
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 14px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.hero .sub {
+  font-size: clamp(16px, 2.5vw, 19px);
+  color: var(--muted);
+  max-width: 620px;
+  margin: 0 auto 28px;
+}
+
+/* CTA grid */
+.cta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background: var(--navy);
+  color: white;
+  text-decoration: none;
+  border-radius: 14px;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-shadow: var(--shadow);
+}
+.cta:hover { transform: translateY(-2px); background: var(--navy-dark); }
+.cta.primary { background: var(--aqua); color: var(--navy-dark); }
+.cta.primary:hover { background: #00A0C4; }
+.cta .icon { font-size: 26px; margin-bottom: 6px; }
+.cta .label { font-size: 13px; letter-spacing: 0.3px; text-transform: uppercase; opacity: 0.85; font-weight: 600; }
+.cta .value { font-size: 17px; margin-top: 2px; }
+
+/* Voice widget section */
+.widget-section {
+  background: linear-gradient(180deg, white 0%, var(--cream) 100%);
+  padding: 48px 0;
+  text-align: center;
+}
+.widget-section h2 {
+  font-size: 24px;
+  color: var(--navy);
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.widget-section p {
+  color: var(--muted);
+  margin-bottom: 28px;
+  font-size: 15px;
+}
+.widget-wrap {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px 24px;
+  max-width: 560px;
+  margin: 0 auto;
+  box-shadow: var(--shadow);
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Content sections */
+.content { padding: 56px 0; background: white; }
+.section { margin-bottom: 48px; }
+.section:last-child { margin-bottom: 0; }
+.section h2 {
+  font-size: 26px;
+  color: var(--navy);
+  margin-bottom: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.section p { color: var(--text); margin-bottom: 12px; font-size: 16px; }
+.section ul { list-style: none; padding: 0; }
+.section ul li {
+  position: relative;
+  padding: 10px 0 10px 32px;
+  font-size: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.section ul li:last-child { border-bottom: none; }
+.section ul li::before {
+  content: "✓";
+  position: absolute;
+  left: 0; top: 10px;
+  width: 22px; height: 22px;
+  background: var(--aqua);
+  color: var(--navy-dark);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+}
+.service-only-callout {
+  background: var(--aqua-light);
+  border-left: 4px solid var(--aqua);
+  padding: 18px 22px;
+  border-radius: 8px;
+  margin: 24px 0;
+  color: var(--navy-dark);
+}
+.service-only-callout strong { color: var(--navy); }
+
+/* Footer CTA band */
+.footer-cta {
+  background: var(--navy);
+  color: white;
+  padding: 48px 0;
+  text-align: center;
+}
+.footer-cta h2 {
+  font-size: 26px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.footer-cta p { color: var(--aqua-light); margin-bottom: 24px; }
+.footer-cta .cta-grid { max-width: 560px; }
+.footer-cta .cta { background: white; color: var(--navy-dark); }
+.footer-cta .cta:hover { background: var(--cream); }
+.footer-cta .cta.primary { background: var(--aqua); color: var(--navy-dark); }
+
+/* Footer */
+footer {
+  background: var(--navy-dark);
+  color: rgba(255,255,255,0.7);
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+}
+footer a { color: var(--aqua-light); text-decoration: none; }
+
+@media (max-width: 600px) {
+  .cta-grid { grid-template-columns: 1fr; }
+  .hero { padding: 40px 0 32px; }
+  .content { padding: 40px 0; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container brand">
+    <div class="logo-circle">RS</div>
+    <div class="brand-text">
+      <div class="name">RainSoft of the Wiregrass</div>
+      <div class="tagline">Water treatment you can trust</div>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="badge">Now Hiring</span>
+    <h1>Service Admin</h1>
+    <p class="sub">Run the engine room of our service department — Monday through Friday, no nights, no weekends. Apply in about 3 minutes below.</p>
+
+    <div class="cta-grid">
+      <a href="tel:+13344895815" class="cta primary">
+        <span class="icon">📞</span>
+        <span class="label">Call</span>
+        <span class="value">(334) 489-5815</span>
+      </a>
+      <a href="sms:+13344895815" class="cta">
+        <span class="icon">💬</span>
+        <span class="label">Text</span>
+        <span class="value">(334) 489-5815</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="widget-section">
+  <div class="container">
+    <h2>Apply by voice — right here</h2>
+    <p>Tap the button below to talk to our hiring assistant. Takes about 3 minutes.</p>
+    <div class="widget-wrap">
+      <elevenlabs-convai agent-id="agent_1001knw9y424e4mvr5bhsssadmp8"></elevenlabs-convai>
+    </div>
+  </div>
+</section>
+
+<section class="content">
+  <div class="container">
+    <div class="section">
+      <h2>About the role</h2>
+      <p>You'll be the person who keeps our service department running smoothly and our technicians moving. When customers call about their water softener, reverse osmosis system, or whole-house filtration, you're the one they talk to — you get the ticket built, the tech scheduled, the parts ordered, and the follow-up done. It's the kind of job where organized, detail-oriented people thrive.</p>
+    </div>
+
+    <div class="section">
+      <h2>What you'll do</h2>
+      <ul>
+        <li>Answer service calls with warmth and professionalism</li>
+        <li>Build service tickets and schedule service appointments</li>
+        <li>Dispatch technicians and manage the daily service board</li>
+        <li>Create detailed work orders with the right parts and history</li>
+        <li>Order parts and keep techs stocked on the truck</li>
+        <li>Process warranty claims and manufacturer paperwork</li>
+        <li>Follow up on every completed service job — collect payment, confirm the fix, handle callbacks</li>
+        <li>Keep the CRM spotless — service history, notes, open tickets</li>
+        <li>Handle service invoicing and follow up on open balances</li>
+      </ul>
+      <div class="service-only-callout">
+        <strong>This role is service only.</strong> You won't be handling sales leads, new installs, or water test scheduling — that's a separate team. You focus 100% on taking care of customers who already own a RainSoft system.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>What we're looking for</h2>
+      <ul>
+        <li>Friendly, upbeat phone presence — you're the voice of the department</li>
+        <li>Organized and detail-oriented — nothing slips through the cracks</li>
+        <li>Comfortable dispatching and juggling a moving schedule</li>
+        <li>Strong computer skills, comfortable learning new software</li>
+        <li>Previous service writer, dispatcher, or service coordinator experience is a big plus</li>
+        <li>Bonus: experience in HVAC, plumbing, pest, water treatment, or appliance repair</li>
+        <li>Dependable, punctual, takes ownership</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>What we offer</h2>
+      <ul>
+        <li>Competitive hourly pay based on experience</li>
+        <li>Monday–Friday schedule — no nights, no weekends</li>
+        <li>Paid time off and paid holidays</li>
+        <li>Tight-knit team with real growth opportunity</li>
+        <li>In-office role in Enterprise, AL</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="footer-cta">
+  <div class="container">
+    <h2>Ready to apply?</h2>
+    <p>Pick whichever is easiest — they all go to the same place.</p>
+    <div class="cta-grid">
+      <a href="tel:+13344895815" class="cta primary">
+        <span class="icon">📞</span>
+        <span class="label">Call</span>
+        <span class="value">(334) 489-5815</span>
+      </a>
+      <a href="sms:+13344895815" class="cta">
+        <span class="icon">💬</span>
+        <span class="label">Text</span>
+        <span class="value">(334) 489-5815</span>
+      </a>
+      <a href="mailto:rebecca@rainsoftse.com?subject=Service%20Admin%20Application" class="cta">
+        <span class="icon">📧</span>
+        <span class="label">Email resume</span>
+        <span class="value">rebecca@rainsoftse.com</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    RainSoft of the Wiregrass · Enterprise, Alabama · Equal Opportunity Employer<br>
+    <a href="https://rainsoftgulfcoast.com">rainsoftgulfcoast.com</a>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+</body>
+</html>

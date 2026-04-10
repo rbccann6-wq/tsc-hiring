@@ -321,6 +321,8 @@ app.get('/api/admin/stats', adminAuth, (req, res) => {
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get(['/rainsoft', '/rainsoft-careers', '/rainsoft/careers'], (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'rainsoft-careers.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const PORT = process.env.PORT || 3000;
@@ -635,7 +637,7 @@ app.post('/webhook/twilio-sms', async (req, res) => {
 // Auto-replies with job info + pushes every message to Telegram
 // ─────────────────────────────────────────────
 const RAINSOFT_CAREERS_FROM = '+13344895815';
-const RAINSOFT_CAREERS_APPLY_URL = 'https://tinyurl.com/rainsoftcareers';
+const RAINSOFT_CAREERS_APPLY_URL = 'https://tinyurl.com/join-rainsoft';
 const RAINSOFT_CAREERS_VOICE_NUMBER = '(334) 489-5815';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8703100352:AAHEics63zNfXta-K4T7QFX9O9bQX4C7q0Q';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '6664842380';
