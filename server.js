@@ -589,7 +589,8 @@ async function handleInboundSMS(from, body) {
   return await sendSMS(from, `Hi! Text "jobs" to start a new application for Tropical Smoothie Cafe, or visit ${process.env.APP_URL || 'our website'} to apply online.`);
 }
 
-// OpenPhone webhook — inbound messages
+// OpenPhone webhook — inbound messages (TSC only)
+const TSC_OPENPHONE_NUMBER = process.env.OPENPHONE_NUMBER || '+13344891215';
 app.post('/webhook/openphone', async (req, res) => {
   res.sendStatus(200); // Acknowledge immediately
   try {
@@ -597,9 +598,15 @@ app.post('/webhook/openphone', async (req, res) => {
     if (event.type !== 'message.received') return;
     const msg = event.data?.object;
     if (!msg || msg.direction !== 'incoming') return;
+    // Only handle messages addressed to the TSC number — org-wide webhook may fire for other numbers
+    const toList = Array.isArray(msg.to) ? msg.to : [msg.to].filter(Boolean);
+    if (!toList.includes(TSC_OPENPHONE_NUMBER)) {
+      console.log(`Skipping TSC handler — message to ${toList.join(',')} is not TSC (${TSC_OPENPHONE_NUMBER})`);
+      return;
+    }
     const from = msg.from;
     const body = msg.body || '';
-    console.log(`Inbound SMS from ${from}: ${body}`);
+    console.log(`[TSC] Inbound SMS from ${from}: ${body}`);
     await handleInboundSMS(from, body);
   } catch(e) {
     console.error('Webhook error:', e.message);
