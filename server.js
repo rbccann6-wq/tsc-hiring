@@ -659,11 +659,286 @@ async function notifyTelegram(text) {
   } catch(e) { console.error('Telegram notify error:', e.message); }
 }
 
-function rainsoftAutoReplyText(firstTime) {
-  if (firstTime) {
-    return `Hi! 👋 Thanks for texting RainSoft of the Wiregrass about our Service Admin opening!\n\nApply in 3 minutes — call or tap:\n📞 ${RAINSOFT_CAREERS_VOICE_NUMBER}\n🔗 ${RAINSOFT_CAREERS_APPLY_URL}\n\nOr reply here with your name, phone, and a little about your experience and we'll pass it straight to Rebecca!`;
+// ─────────────────────────────────────────────
+// RAINSOFT CAREERS — Stepped SMS qualifier
+// Asks the same kind of conversational questions the ElevenLabs phone
+// agent asks, one at a time, and captures the answers for Rebecca.
+// ─────────────────────────────────────────────
+
+const RAINSOFT_STEPS = {
+  GET_NAME: 'get_name',
+  GET_CITY: 'get_city',
+  GET_EXPERIENCE: 'get_experience',
+  GET_COMPUTER: 'get_computer',
+  GET_AVAILABILITY: 'get_availability',
+  GET_START: 'get_start',
+  GET_WHY: 'get_why',
+  GET_EMAIL: 'get_email',
+  DONE: 'done',
+};
+
+// Local driving range around Enterprise, AL — case-insensitive substring match
+const RAINSOFT_LOCAL_CITIES = [
+  'enterprise', 'daleville', 'ozark', 'fort rucker', 'ft rucker', 'ft. rucker',
+  'elba', 'new brockton', 'level plains', 'coffee springs', 'kinston',
+  'samson', 'opp', 'brundidge', 'troy', 'dothan', 'headland', 'geneva',
+  'hartford', 'slocomb', 'midland city', 'newton', 'pinckard', 'cottonwood',
+];
+
+function getRainsoftConversation(phone) {
+  db = loadDB();
+  if (!db.rainsoft_conversations) db.rainsoft_conversations = {};
+  return db.rainsoft_conversations[phone] || null;
+}
+
+function saveRainsoftConversation(phone, state) {
+  db = loadDB();
+  if (!db.rainsoft_conversations) db.rainsoft_conversations = {};
+  db.rainsoft_conversations[phone] = { ...state, updated_at: new Date().toISOString() };
+  saveDB(db);
+}
+
+function clearRainsoftConversation(phone) {
+  db = loadDB();
+  if (db.rainsoft_conversations) delete db.rainsoft_conversations[phone];
+  saveDB(db);
+}
+
+function isRainsoftStartKeyword(text) {
+  const t = text.trim().toLowerCase();
+  if (!t) return true;
+  return [
+    'hi', 'hello', 'hey', 'yo', 'start', 'apply', 'job', 'jobs',
+    'hiring', 'interested', 'yes', 'work', 'position',
+  ].some((k) => t === k || t.startsWith(k + ' '));
+}
+
+function scoreRainsoftApplication(d) {
+  let score = 0;
+  const flags = [];
+
+  const cityLower = (d.city || '').toLowerCase();
+  const isLocal = RAINSOFT_LOCAL_CITIES.some((c) => cityLower.includes(c));
+  if (isLocal) score += 30;
+  else if (cityLower) flags.push('city_outside_local_range');
+
+  const exp = (d.experience || '').toLowerCase();
+  if (/(yes|y|\bi have\b|yeah|yep|admin|dispatch|service|office|customer service|receptionist|clerk|scheduling)/.test(exp)) {
+    score += 25;
   }
-  return `Thanks! We've passed your message along to Rebecca — she'll get back to you personally. If you'd like to complete a full application, tap ${RAINSOFT_CAREERS_APPLY_URL} or call ${RAINSOFT_CAREERS_VOICE_NUMBER}. 🌊`;
+
+  const comp = (d.computer || '').toLowerCase();
+  if (/(1|very|comfortable|excellent|expert|good)/.test(comp)) score += 20;
+  else if (/(2|okay|ok|fine|some)/.test(comp)) score += 10;
+
+  const avail = (d.availability || '').toLowerCase();
+  if (/(yes|yeah|yep|mon|weekday|full|8|all)/.test(avail)) score += 15;
+  else if (/(no|can't|cant|part|only)/.test(avail)) flags.push('unavailable_weekdays');
+
+  const start = (d.start || '').toLowerCase();
+  if (/(immediately|asap|now|today|this week|next week|1 week|2 week|two week)/.test(start)) {
+    score += 10;
+  }
+
+  let status = 'warm';
+  if (score >= 75) status = 'hot';
+  else if (score <= 30) status = 'cold';
+
+  // Auto-disqualify if clearly outside driving range AND said no to availability
+  const disqualified = flags.includes('unavailable_weekdays');
+
+  return { score, status, disqualified, flags, isLocal };
+}
+
+async function handleRainsoftCareersSMS(from, body) {
+  const text = (body || '').trim();
+  const lc = text.toLowerCase();
+
+  // Opt-out always wins
+  if (lc === 'stop' || lc === 'unsubscribe' || lc === 'quit') {
+    clearRainsoftConversation(from);
+    await sendSMS(
+      from,
+      `You're opted out. Reply START if you want to talk to us again. Good luck! 🌊`,
+      RAINSOFT_CAREERS_FROM,
+    );
+    return;
+  }
+
+  let conv = getRainsoftConversation(from);
+
+  // Fresh start — no prior conversation OR a greeting keyword that restarts
+  if (!conv || conv.step === RAINSOFT_STEPS.DONE || (isRainsoftStartKeyword(text) && !conv.step)) {
+    conv = {
+      step: RAINSOFT_STEPS.GET_NAME,
+      phone: from,
+      data: {},
+      started_at: new Date().toISOString(),
+    };
+    saveRainsoftConversation(from, conv);
+
+    await notifyTelegram(
+      `📱 RainSoft Careers — new applicant starting\nFrom: ${from}\nMessage: ${body || '(empty)'}`,
+    );
+
+    await sendSMS(
+      from,
+      `Hi! 👋 This is the RainSoft of the Wiregrass careers line. We're hiring a Service Admin and I'd love to get you started — it's a quick chat, just a few questions.\n\nFirst — what's your first and last name?`,
+      RAINSOFT_CAREERS_FROM,
+    );
+    return;
+  }
+
+  // Record this message on the conversation
+  conv.data = conv.data || {};
+
+  switch (conv.step) {
+    case RAINSOFT_STEPS.GET_NAME: {
+      const parts = text.split(/\s+/).filter(Boolean);
+      conv.data.first_name = parts[0] || '';
+      conv.data.last_name = parts.slice(1).join(' ') || '';
+      conv.step = RAINSOFT_STEPS.GET_CITY;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `Nice to meet you, ${conv.data.first_name}! 🌊\n\nWhat city and state are you in? (We hire local — Enterprise / Dothan / Wiregrass area.)`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_CITY: {
+      conv.data.city = text;
+      conv.step = RAINSOFT_STEPS.GET_EXPERIENCE;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `Great. Tell me a bit about your work background — have you done any admin, customer service, dispatch, or office-type work before? A sentence or two is plenty.`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_EXPERIENCE: {
+      conv.data.experience = text;
+      conv.step = RAINSOFT_STEPS.GET_COMPUTER;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `Got it. How comfortable are you with computers — things like email, scheduling software, and basic spreadsheets?\n\n1️⃣ Very comfortable\n2️⃣ Okay, I can learn fast\n3️⃣ Still learning`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_COMPUTER: {
+      conv.data.computer = text;
+      conv.step = RAINSOFT_STEPS.GET_AVAILABILITY;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `The role is Monday–Friday, roughly 8am to 5pm at our Enterprise office. Does that work for your schedule?`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_AVAILABILITY: {
+      conv.data.availability = text;
+      conv.step = RAINSOFT_STEPS.GET_START;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `When could you start if we moved forward?\n\n1️⃣ Immediately\n2️⃣ Within 1 week\n3️⃣ 2 weeks notice\n4️⃣ About a month`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_START: {
+      conv.data.start = text;
+      conv.step = RAINSOFT_STEPS.GET_WHY;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `Almost done. In a sentence or two — why are you interested in this role? What made you reach out?`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_WHY: {
+      conv.data.why = text;
+      conv.step = RAINSOFT_STEPS.GET_EMAIL;
+      saveRainsoftConversation(from, conv);
+      await sendSMS(
+        from,
+        `Last one — what's the best email to send next steps to?`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      return;
+    }
+
+    case RAINSOFT_STEPS.GET_EMAIL: {
+      conv.data.email = text;
+      conv.data.phone = from;
+      conv.step = RAINSOFT_STEPS.DONE;
+      conv.completed_at = new Date().toISOString();
+
+      const scoring = scoreRainsoftApplication(conv.data);
+      conv.scoring = scoring;
+      saveRainsoftConversation(from, conv);
+
+      const d = conv.data;
+      const fullName = `${d.first_name || ''} ${d.last_name || ''}`.trim();
+      const statusIcon = scoring.disqualified ? '❌' : scoring.status === 'hot' ? '🔥' : scoring.status === 'warm' ? '🟡' : '🔵';
+      const scoreLine = `${statusIcon} Score ${scoring.score}/100 — ${scoring.status.toUpperCase()}${scoring.disqualified ? ' (DISQUALIFIED)' : ''}`;
+
+      await notifyTelegram(
+        `📝 RAINSOFT CAREERS APPLICATION COMPLETE\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `${scoreLine}\n\n` +
+        `Name:  ${fullName}\n` +
+        `Phone: ${from}\n` +
+        `Email: ${d.email || '—'}\n` +
+        `City:  ${d.city || '—'} ${scoring.isLocal ? '✅ local' : '⚠️ outside range'}\n\n` +
+        `Experience:\n${d.experience || '—'}\n\n` +
+        `Computer skills: ${d.computer || '—'}\n` +
+        `Mon–Fri 8–5:      ${d.availability || '—'}\n` +
+        `Can start:        ${d.start || '—'}\n\n` +
+        `Why interested:\n${d.why || '—'}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+      );
+
+      let finalMsg;
+      if (scoring.disqualified) {
+        finalMsg = `Thanks for reaching out, ${d.first_name}! Based on what you shared this role might not be the right fit right now, but I truly appreciate your time. 🌊`;
+      } else if (scoring.status === 'hot') {
+        finalMsg = `🎉 That's everything I needed, ${d.first_name}! Your answers look great — Rebecca will reach out personally within the next day or so to schedule a quick call. Thanks so much for applying! 🌊`;
+      } else {
+        finalMsg = `Thanks ${d.first_name}! I've got everything I need. Rebecca will review your responses and text you back from this number within a couple of days. Appreciate you reaching out! 🌊`;
+      }
+      await sendSMS(from, finalMsg, RAINSOFT_CAREERS_FROM);
+      return;
+    }
+
+    default: {
+      // Safety net — reset and greet
+      clearRainsoftConversation(from);
+      await sendSMS(
+        from,
+        `Let's start fresh. What's your first and last name?`,
+        RAINSOFT_CAREERS_FROM,
+      );
+      saveRainsoftConversation(from, {
+        step: RAINSOFT_STEPS.GET_NAME,
+        phone: from,
+        data: {},
+        started_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
 }
 
 app.post('/webhook/openphone-rainsoft', async (req, res) => {
@@ -674,31 +949,29 @@ app.post('/webhook/openphone-rainsoft', async (req, res) => {
     const msg = event.data?.object;
     if (!msg || msg.direction !== 'incoming') return;
     const from = msg.from;
-    const to = (msg.to && msg.to[0]) || msg.to || RAINSOFT_CAREERS_FROM;
+    const toList = Array.isArray(msg.to) ? msg.to : [msg.to].filter(Boolean);
+    // Only handle messages addressed to the RainSoft careers number
+    if (toList.length > 0 && !toList.includes(RAINSOFT_CAREERS_FROM)) {
+      console.log(`[RainSoft] Skipping — message to ${toList.join(',')} is not ${RAINSOFT_CAREERS_FROM}`);
+      return;
+    }
     const body = msg.body || msg.text || '';
-    console.log(`[RainSoft] Inbound SMS from ${from} → ${to}: ${body}`);
+    console.log(`[RainSoft] Inbound SMS from ${from}: ${body}`);
 
+    // Append to full message log for this number (for audit / replay)
     db = loadDB();
     if (!db.rainsoft_sms_conversations) db.rainsoft_sms_conversations = {};
-    const seenBefore = !!db.rainsoft_sms_conversations[from];
+    const prior = db.rainsoft_sms_conversations[from] || { messages: [] };
     db.rainsoft_sms_conversations[from] = {
       last_message: body,
       last_at: new Date().toISOString(),
-      messages: [...(db.rainsoft_sms_conversations[from]?.messages || []), { from, body, at: new Date().toISOString() }],
+      messages: [...(prior.messages || []), { direction: 'in', body, at: new Date().toISOString() }],
     };
     saveDB(db);
 
-    // Notify Rebecca in Telegram
-    await notifyTelegram(
-      `📱 RainSoft Careers text\n` +
-      `From: ${from}\n` +
-      `Message: ${body}\n` +
-      `${seenBefore ? '(continuing conversation)' : '(new contact)'}`
-    );
-
-    // Auto-reply
-    await sendSMS(from, rainsoftAutoReplyText(!seenBefore), RAINSOFT_CAREERS_FROM);
-  } catch(e) {
+    // Drive the stepped qualifier
+    await handleRainsoftCareersSMS(from, body);
+  } catch (e) {
     console.error('RainSoft OpenPhone webhook error:', e.message);
   }
 });
